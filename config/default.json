@@ -1,0 +1,117 @@
+{
+  "application": {
+    "name": "KATS",
+    "version": "1.0.0",
+    "language": "ko",
+    "theme": "dark",
+    "debug": false,
+    "timezone": "Asia/Seoul"
+  },
+  "broker": {
+    "broker_type": "kis",
+    "base_url": "https://openapivts.koreainvestment.com:29443",
+    "websocket_url": "ws://ops.koreainvestment.com:31000",
+    "timeout": {
+      "connect": 5,
+      "read": 10,
+      "write": 10
+    },
+    "retry": {
+      "max_retry": 3,
+      "backoff_factor": 2
+    },
+    "rate_limit": {
+      "requests_per_second": 20,
+      "burst_size": 5
+    }
+  },
+  "authentication": {
+    "account_type": "mock",
+    "token_path": "data/auth/token.json",
+    "auto_refresh": true,
+    "refresh_margin_seconds": 300,
+    "approval_cache_seconds": 3600
+  },
+  "database": {
+    "engine": "sqlite",
+    "database_path": "data/database/kats.db",
+    "backup_path": "data/backup",
+    "migration_enabled": true,
+    "cache_enabled": true,
+    "pool_size": 5
+  },
+  "logging": {
+    "level": "INFO",
+    "structured": false,
+    "rotation": true,
+    "max_file_size_mb": 10,
+    "backup_count": 5,
+    "console_output": true,
+    "file_output": true
+  },
+  "strategy": {
+    "auto_load": true,
+    "plugin_path": "plugins/strategies",
+    "scan_interval_seconds": 60,
+    "max_strategy_count": 10,
+    "auto_start": false
+  },
+  "backtest": {
+    "default_slippage": 0.001,
+    "default_commission_rate": 0.00015,
+    "default_initial_capital": 10000000
+  },
+  "market": {
+    "cache_ttl_seconds": 1,
+    "tick_buffer_size": 1000,
+    "candle_buffer_size": 500,
+    "refresh_interval_seconds": 1,
+    "timezone": "Asia/Seoul"
+  },
+  "order": {
+    "default_order_type": "limit",
+    "live_trading_enabled": false,
+    "retry": {
+      "max_retry": 3,
+      "backoff_factor": 2
+    },
+    "timeout_seconds": 10,
+    "partial_fill_enabled": true,
+    "auto_cancel_seconds": 0
+  },
+  "risk": {
+    "daily_loss_limit": 0.03,
+    "position_limit": 20,
+    "max_quantity": 10000,
+    "max_order_amount": 100000000,
+    "duplicate_order_block": true,
+    "emergency_stop": false
+  },
+  "notification": {
+    "enable_telegram": false,
+    "enable_discord": false,
+    "enable_email": false,
+    "enable_slack": false,
+    "sound_enabled": true
+  },
+  "ui": {
+    "theme": "dark",
+    "font": "Malgun Gothic",
+    "window_width": 1920,
+    "window_height": 1080,
+    "layout": "default",
+    "chart_style": "candle",
+    "language": "ko"
+  },
+  "system": {
+    "auto_backup": true,
+    "health_check_interval_seconds": 30,
+    "recovery_timeout_seconds": 30
+  },
+  "scheduler": {
+    "enabled": false,
+    "strategy_auto_start": false,
+    "strategy_auto_start_id": "",
+    "log_cleanup_interval_seconds": 86400
+  }
+}

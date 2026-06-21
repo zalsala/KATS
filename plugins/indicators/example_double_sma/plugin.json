@@ -1,0 +1,9 @@
+{
+  "id": "example_double_sma",
+  "name": "Example Double SMA",
+  "version": "1.0.0",
+  "type": "indicator",
+  "entry_point": "indicator.py",
+  "class_name": "ExampleDoubleSmaIndicator",
+  "indicator_name": "example_double_sma"
+}

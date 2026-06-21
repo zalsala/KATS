@@ -1,0 +1,11 @@
+{
+  "id": "example_hold_once",
+  "name": "Example Hold Once",
+  "version": "1.0.0",
+  "type": "strategy",
+  "entry_point": "strategy.py",
+  "class_name": "ExampleHoldOnceStrategy",
+  "description": "Example external strategy plugin.",
+  "author": "KATS",
+  "strategy_type": "example_hold_once"
+}

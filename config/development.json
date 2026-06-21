@@ -1,0 +1,12 @@
+{
+  "application": {
+    "debug": true
+  },
+  "logging": {
+    "level": "DEBUG"
+  },
+  "broker": {
+    "base_url": "https://openapivts.koreainvestment.com:29443",
+    "websocket_url": "ws://ops.koreainvestment.com:21000"
+  }
+}

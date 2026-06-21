@@ -1,0 +1,7 @@
+# Runtime
+pydantic>=2.0
+python-dotenv>=1.0
+websocket-client>=1.6.0
+
+# Development (install with: pip install -r requirements-dev.txt)
+# See requirements-dev.txt for Ruff, Black, mypy, pytest

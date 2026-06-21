@@ -1,0 +1,9 @@
+{
+  "id": "example_console_notifier",
+  "name": "Example Console Notifier",
+  "version": "1.0.0",
+  "type": "notification",
+  "entry_point": "notification.py",
+  "class_name": "ExampleConsoleNotifier",
+  "notification_channel": "example_console"
+}

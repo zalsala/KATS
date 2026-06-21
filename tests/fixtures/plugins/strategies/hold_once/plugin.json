@@ -1,0 +1,11 @@
+{
+  "id": "hold_once",
+  "name": "Hold Once Strategy",
+  "version": "1.0.0",
+  "type": "strategy",
+  "entry_point": "strategy.py",
+  "class_name": "HoldOnceStrategy",
+  "description": "Buy once on first market tick and hold.",
+  "author": "KATS Test",
+  "strategy_type": "hold_once"
+}

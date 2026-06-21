@@ -1,0 +1,9 @@
+{
+  "id": "double_sma",
+  "name": "Double SMA",
+  "version": "1.0.0",
+  "type": "indicator",
+  "entry_point": "indicator.py",
+  "class_name": "DoubleSmaIndicator",
+  "indicator_name": "double_sma"
+}

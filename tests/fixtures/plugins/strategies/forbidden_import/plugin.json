@@ -1,0 +1,9 @@
+{
+  "id": "forbidden_strategy",
+  "name": "Forbidden Strategy",
+  "version": "1.0.0",
+  "type": "strategy",
+  "entry_point": "strategy.py",
+  "class_name": "ForbiddenStrategy",
+  "strategy_type": "forbidden_strategy"
+}
