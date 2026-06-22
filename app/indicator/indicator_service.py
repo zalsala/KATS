@@ -18,11 +18,36 @@ DEFAULT_SMA_NAME = "SMA20"
 DEFAULT_EMA_NAME = "EMA20"
 DEFAULT_VWAP_NAME = "VWAP"
 
-DEFAULT_OVERLAY_FACTORIES: dict[str, Callable[[], Indicator]] = {
-    DEFAULT_SMA_NAME: lambda: SmaIndicator(20),
-    DEFAULT_EMA_NAME: lambda: EmaIndicator(20),
-    DEFAULT_VWAP_NAME: lambda: VwapIndicator(),
-}
+
+def sma_indicator_name(period: int) -> str:
+    """Return the overlay series name for an SMA period."""
+    return f"SMA{period}"
+
+
+def ema_indicator_name(period: int) -> str:
+    """Return the overlay series name for an EMA period."""
+    return f"EMA{period}"
+
+
+def _make_sma_factory(period: int) -> Callable[[], Indicator]:
+    def factory() -> Indicator:
+        return SmaIndicator(period)
+
+    return factory
+
+
+def _make_ema_factory(period: int) -> Callable[[], Indicator]:
+    def factory() -> Indicator:
+        return EmaIndicator(period)
+
+    return factory
+
+
+def _make_vwap_factory() -> Callable[[], Indicator]:
+    def factory() -> Indicator:
+        return VwapIndicator()
+
+    return factory
 
 
 class IndicatorService:
@@ -51,11 +76,55 @@ class IndicatorService:
 
     def ensure_default_indicators(self, symbol: str, timeframe: str) -> None:
         """Register default overlay indicators for a series when missing."""
-        for name, factory in DEFAULT_OVERLAY_FACTORIES.items():
-            key = (symbol, timeframe)
-            if name in self._indicators.get(key, {}):
-                continue
+        self.configure_overlay_indicators(
+            symbol,
+            timeframe,
+            sma_enabled=True,
+            sma_period=20,
+            ema_enabled=False,
+            ema_period=20,
+            vwap_enabled=False,
+        )
+
+    def configure_overlay_indicators(
+        self,
+        symbol: str,
+        timeframe: str,
+        *,
+        sma_enabled: bool,
+        sma_period: int,
+        ema_enabled: bool,
+        ema_period: int,
+        vwap_enabled: bool,
+    ) -> tuple[str, ...]:
+        """Rebuild overlay indicators for a series and return enabled names."""
+        self._clear_overlay_indicators(symbol, timeframe)
+        enabled_names: list[str] = []
+
+        if sma_enabled:
+            name = sma_indicator_name(sma_period)
+            factory = _make_sma_factory(sma_period)
             self.register_indicator(symbol, timeframe, name, factory(), factory=factory)
+            enabled_names.append(name)
+
+        if ema_enabled:
+            name = ema_indicator_name(ema_period)
+            factory = _make_ema_factory(ema_period)
+            self.register_indicator(symbol, timeframe, name, factory(), factory=factory)
+            enabled_names.append(name)
+
+        if vwap_enabled:
+            factory = _make_vwap_factory()
+            self.register_indicator(
+                symbol,
+                timeframe,
+                DEFAULT_VWAP_NAME,
+                factory(),
+                factory=factory,
+            )
+            enabled_names.append(DEFAULT_VWAP_NAME)
+
+        return tuple(enabled_names)
 
     def update_candle(self, candle: Candle) -> None:
         """Update all indicators registered for the candle series."""
@@ -85,7 +154,8 @@ class IndicatorService:
     ) -> IndicatorSeriesMap:
         """Build overlay point series by replaying candles through indicator factories."""
         key = (symbol, timeframe)
-        selected_names = names or tuple(DEFAULT_OVERLAY_FACTORIES)
+        registered_names = tuple(self._factories.get(key, {}))
+        selected_names = names or registered_names
         factories = self._factories.get(key, {})
         series_map: IndicatorSeriesMap = {}
 
@@ -100,6 +170,21 @@ class IndicatorService:
     def list_indicator_names(self, symbol: str, timeframe: str) -> tuple[str, ...]:
         """Return registered indicator names for a series."""
         return tuple(self._indicators.get((symbol, timeframe), {}).keys())
+
+    def _clear_overlay_indicators(self, symbol: str, timeframe: str) -> None:
+        key = (symbol, timeframe)
+        indicators = self._indicators.get(key)
+        if indicators is None:
+            return
+
+        overlay_names = [
+            name
+            for name in indicators
+            if name.startswith("SMA") or name.startswith("EMA") or name == DEFAULT_VWAP_NAME
+        ]
+        for name in overlay_names:
+            del indicators[name]
+            self._factories.get(key, {}).pop(name, None)
 
 
 def build_indicator_service() -> IndicatorService:

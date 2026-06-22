@@ -9,6 +9,8 @@ from app.indicator.indicator_service import (
     DEFAULT_VWAP_NAME,
     IndicatorService,
     build_indicator_service,
+    ema_indicator_name,
+    sma_indicator_name,
 )
 from app.indicator.sma_indicator import SmaIndicator
 from app.indicator.vwap_indicator import VwapIndicator
@@ -24,4 +26,6 @@ __all__ = [
     "SmaIndicator",
     "VwapIndicator",
     "build_indicator_service",
+    "ema_indicator_name",
+    "sma_indicator_name",
 ]

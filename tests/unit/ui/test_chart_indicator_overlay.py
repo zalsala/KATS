@@ -16,6 +16,8 @@ from app.indicator.indicator_service import (
     DEFAULT_SMA_NAME,
     DEFAULT_VWAP_NAME,
     IndicatorService,
+    ema_indicator_name,
+    sma_indicator_name,
 )
 from app.service.chart.chart_service import build_chart_service
 from app.ui.controllers.ui_controller import UiController
@@ -102,8 +104,8 @@ def test_chart_view_model_exposes_indicator_series() -> None:
     view_model = ChartViewModel(service, symbol_code=DEFAULT_SYMBOL)
     view_model.refresh()
 
-    assert DEFAULT_SMA_NAME in view_model.indicator_series
-    assert len(view_model.indicator_series[DEFAULT_SMA_NAME]) >= 1
+    assert sma_indicator_name(20) in view_model.indicator_series
+    assert len(view_model.indicator_series[sma_indicator_name(20)]) >= 1
 
 
 def test_market_view_checkbox_toggles_overlay_visibility(qapp) -> None:
@@ -122,28 +124,36 @@ def test_market_view_checkbox_toggles_overlay_visibility(qapp) -> None:
     view.show()
     qapp.processEvents()
 
-    assert view_model.chart.show_sma is True
-    assert DEFAULT_SMA_NAME in view.chart_widget.indicator_series
+    assert view_model.chart.indicator_settings.sma_enabled is True
+    assert sma_indicator_name(20) in view.chart_widget.indicator_series
 
     view._ema_checkbox.setChecked(True)  # noqa: SLF001
     qapp.processEvents()
-    assert DEFAULT_EMA_NAME in view.chart_widget.indicator_series
+    assert ema_indicator_name(20) in view.chart_widget.indicator_series
 
     view._sma_checkbox.setChecked(False)  # noqa: SLF001
     qapp.processEvents()
-    assert DEFAULT_SMA_NAME not in view.chart_widget.indicator_series
+    assert sma_indicator_name(20) not in view.chart_widget.indicator_series
 
 
 def test_paint_event_smoke_with_candles_and_indicators(qapp) -> None:
     widget = ChartWidget()
     candles = [_candle(minute, str(100 + minute)) for minute in range(1, 25)]
     indicator_service = IndicatorService()
-    indicator_service.ensure_default_indicators(DEFAULT_SYMBOL, "1m")
+    indicator_service.configure_overlay_indicators(
+        DEFAULT_SYMBOL,
+        "1m",
+        sma_enabled=True,
+        sma_period=20,
+        ema_enabled=False,
+        ema_period=20,
+        vwap_enabled=True,
+    )
     series = indicator_service.build_overlay_series(
         DEFAULT_SYMBOL,
         "1m",
         candles,
-        names=(DEFAULT_SMA_NAME, DEFAULT_VWAP_NAME),
+        names=(sma_indicator_name(20), DEFAULT_VWAP_NAME),
     )
 
     widget.resize(640, 320)

@@ -22,10 +22,19 @@ AXIS_COLOR = QColor("#9e9e9e")
 BACKGROUND_COLOR = QColor("#1e1e1e")
 TEXT_COLOR = QColor("#e0e0e0")
 INDICATOR_COLORS: dict[str, QColor] = {
-    "SMA20": QColor("#42a5f5"),
-    "EMA20": QColor("#ab47bc"),
+    "SMA": QColor("#42a5f5"),
+    "EMA": QColor("#ab47bc"),
     "VWAP": QColor("#ffa726"),
 }
+
+
+def _indicator_color(name: str) -> QColor:
+    """Resolve overlay color for dynamic indicator names such as SMA50."""
+    if name.startswith("SMA"):
+        return INDICATOR_COLORS["SMA"]
+    if name.startswith("EMA"):
+        return INDICATOR_COLORS["EMA"]
+    return INDICATOR_COLORS.get(name, TEXT_COLOR)
 
 
 class ChartWidget(QWidget):
@@ -176,7 +185,7 @@ class ChartWidget(QWidget):
             if not points:
                 continue
 
-            color = INDICATOR_COLORS.get(name, TEXT_COLOR)
+            color = _indicator_color(name)
             painter.setPen(QPen(color, 2))
             previous_point: tuple[int, int] | None = None
 

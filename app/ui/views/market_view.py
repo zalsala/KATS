@@ -10,12 +10,14 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from app.chart.timeframe import Timeframe
 from app.ui.controllers.ui_controller import UiController
+from app.ui.models.indicator_settings import IndicatorSettings
 from app.ui.viewmodels.main_view_model import MainViewModel
 from app.ui.views.view_base import bind_view_model
 from app.ui.widgets.chart_widget import ChartWidget
@@ -56,18 +58,27 @@ class MarketView(QWidget):
         for timeframe in Timeframe:
             self._timeframe_selector.addItem(timeframe.value, timeframe)
         self._timeframe_selector.setCurrentText(self._chart_vm.selected_timeframe.value)
+        settings = self._chart_vm.indicator_settings
         self._sma_checkbox = QCheckBox("SMA")
+        self._sma_period = QSpinBox()
+        self._sma_period.setRange(IndicatorSettings.MIN_PERIOD, IndicatorSettings.MAX_PERIOD)
+        self._sma_period.setValue(settings.sma_period)
         self._ema_checkbox = QCheckBox("EMA")
+        self._ema_period = QSpinBox()
+        self._ema_period.setRange(IndicatorSettings.MIN_PERIOD, IndicatorSettings.MAX_PERIOD)
+        self._ema_period.setValue(settings.ema_period)
         self._vwap_checkbox = QCheckBox("VWAP")
-        self._sma_checkbox.setChecked(self._chart_vm.show_sma)
-        self._ema_checkbox.setChecked(self._chart_vm.show_ema)
-        self._vwap_checkbox.setChecked(self._chart_vm.show_vwap)
+        self._sma_checkbox.setChecked(settings.sma_enabled)
+        self._ema_checkbox.setChecked(settings.ema_enabled)
+        self._vwap_checkbox.setChecked(settings.vwap_enabled)
 
         self._symbol_input.textChanged.connect(self._on_symbol_changed)
         self._timeframe_selector.currentIndexChanged.connect(self._on_timeframe_changed)
-        self._sma_checkbox.toggled.connect(self._chart_vm.set_show_sma)
-        self._ema_checkbox.toggled.connect(self._chart_vm.set_show_ema)
-        self._vwap_checkbox.toggled.connect(self._chart_vm.set_show_vwap)
+        self._sma_checkbox.toggled.connect(self._on_indicator_settings_changed)
+        self._sma_period.valueChanged.connect(self._on_indicator_settings_changed)
+        self._ema_checkbox.toggled.connect(self._on_indicator_settings_changed)
+        self._ema_period.valueChanged.connect(self._on_indicator_settings_changed)
+        self._vwap_checkbox.toggled.connect(self._on_indicator_settings_changed)
         self._connect_button.clicked.connect(self._on_connect_clicked)
         self._disconnect_button.clicked.connect(self._on_disconnect_clicked)
         self._subscribe_button.clicked.connect(self._on_subscribe_clicked)
@@ -84,7 +95,9 @@ class MarketView(QWidget):
 
         overlays = QHBoxLayout()
         overlays.addWidget(self._sma_checkbox)
+        overlays.addWidget(self._sma_period)
         overlays.addWidget(self._ema_checkbox)
+        overlays.addWidget(self._ema_period)
         overlays.addWidget(self._vwap_checkbox)
         controls.addRow("Indicators", overlays)
 
@@ -161,6 +174,17 @@ class MarketView(QWidget):
         if timeframe is None:
             return
         self._chart_vm.set_timeframe(timeframe)
+
+    def _on_indicator_settings_changed(self, *_args: object) -> None:
+        self._chart_vm.update_indicator_settings(
+            IndicatorSettings(
+                sma_enabled=self._sma_checkbox.isChecked(),
+                sma_period=self._sma_period.value(),
+                ema_enabled=self._ema_checkbox.isChecked(),
+                ema_period=self._ema_period.value(),
+                vwap_enabled=self._vwap_checkbox.isChecked(),
+            )
+        )
 
     def _on_connect_clicked(self) -> None:
         try:

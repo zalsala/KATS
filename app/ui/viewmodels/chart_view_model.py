@@ -5,8 +5,13 @@ from __future__ import annotations
 from app.chart.candle import Candle
 from app.chart.timeframe import DEFAULT_TIMEFRAME, Timeframe, resolve_timeframe
 from app.indicator.indicator_series import IndicatorSeriesMap
-from app.indicator.indicator_service import DEFAULT_EMA_NAME, DEFAULT_SMA_NAME, DEFAULT_VWAP_NAME
+from app.indicator.indicator_service import (
+    DEFAULT_VWAP_NAME,
+    ema_indicator_name,
+    sma_indicator_name,
+)
 from app.service.chart.chart_service import ChartService
+from app.ui.models.indicator_settings import IndicatorSettings
 from app.ui.viewmodels.base import ViewModelBase
 
 DEFAULT_SYMBOL = "005930"
@@ -28,9 +33,7 @@ class ChartViewModel(ViewModelBase):
         self.selected_timeframe = resolve_timeframe(selected_timeframe)
         self.candles: list[Candle] = []
         self.indicator_series: IndicatorSeriesMap = {}
-        self.show_sma = True
-        self.show_ema = False
-        self.show_vwap = False
+        self.indicator_settings = IndicatorSettings()
         self.total_ticks_received = 0
         self.total_candles = 0
         self.last_trade_time = ""
@@ -63,17 +66,30 @@ class ChartViewModel(ViewModelBase):
             self.notify("indicators")
             return
 
+        settings = self.indicator_settings
         timeframe = self.selected_timeframe.value
-        indicator_service.ensure_default_indicators(self.symbol_code, timeframe)
-        enabled_names = self._enabled_indicator_names()
-        all_series = indicator_service.build_overlay_series(
+        enabled_names = indicator_service.configure_overlay_indicators(
+            self.symbol_code,
+            timeframe,
+            sma_enabled=settings.sma_enabled,
+            sma_period=settings.sma_period,
+            ema_enabled=settings.ema_enabled,
+            ema_period=settings.ema_period,
+            vwap_enabled=settings.vwap_enabled,
+        )
+        self.indicator_series = indicator_service.build_overlay_series(
             self.symbol_code,
             timeframe,
             self.candles,
             names=enabled_names,
         )
-        self.indicator_series = all_series
         self.notify("indicators")
+
+    def update_indicator_settings(self, settings: IndicatorSettings) -> None:
+        """Apply indicator overlay settings and refresh overlay data."""
+        settings.validate()
+        self.indicator_settings = settings
+        self.refresh_indicators()
 
     def set_symbol(self, symbol_code: str) -> None:
         """Change the active symbol and refresh candles."""
@@ -86,24 +102,14 @@ class ChartViewModel(ViewModelBase):
         self.notify("timeframe")
         self.refresh()
 
-    def set_show_sma(self, enabled: bool) -> None:
-        self.show_sma = enabled
-        self.refresh_indicators()
-
-    def set_show_ema(self, enabled: bool) -> None:
-        self.show_ema = enabled
-        self.refresh_indicators()
-
-    def set_show_vwap(self, enabled: bool) -> None:
-        self.show_vwap = enabled
-        self.refresh_indicators()
-
-    def _enabled_indicator_names(self) -> tuple[str, ...]:
+    def enabled_indicator_names(self) -> tuple[str, ...]:
+        """Return overlay series names enabled by the current settings."""
+        settings = self.indicator_settings
         names: list[str] = []
-        if self.show_sma:
-            names.append(DEFAULT_SMA_NAME)
-        if self.show_ema:
-            names.append(DEFAULT_EMA_NAME)
-        if self.show_vwap:
+        if settings.sma_enabled:
+            names.append(sma_indicator_name(settings.sma_period))
+        if settings.ema_enabled:
+            names.append(ema_indicator_name(settings.ema_period))
+        if settings.vwap_enabled:
             names.append(DEFAULT_VWAP_NAME)
         return tuple(names)
