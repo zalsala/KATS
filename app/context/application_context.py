@@ -22,6 +22,7 @@ from app.service.order.order_service import OrderService
 from app.service.portfolio.portfolio_service import PortfolioService
 from app.service.risk.risk_service import RiskService
 from app.service.scheduler.scheduler_service import SchedulerService
+from app.service.scheduler.scheduler_worker_service import SchedulerWorkerService
 from app.service.strategy.strategy_service import StrategyService
 
 if TYPE_CHECKING:
@@ -50,6 +51,7 @@ class ApplicationContext:
     order_service: OrderService | None = None
     websocket_service: WebSocketService | None = None
     scheduler_service: SchedulerService | None = None
+    scheduler_worker_service: SchedulerWorkerService | None = None
     plugin_manager: PluginManager | None = None
     plugin_load_report: PluginLoadReport | None = None
     _running: bool = field(default=False, init=False)
@@ -79,6 +81,8 @@ class ApplicationContext:
         if self.scheduler_service is not None and self.settings.config.scheduler.enabled:
             self._register_scheduler_tasks()
             self.scheduler_service.start(self.event_bus)
+            if self.scheduler_worker_service is not None:
+                self.scheduler_worker_service.start()
 
         self._running = True
         logger.info("ApplicationContext started")
@@ -92,6 +96,8 @@ class ApplicationContext:
             self.websocket_service.disconnect()
 
         if self.scheduler_service is not None and self.settings.config.scheduler.enabled:
+            if self.scheduler_worker_service is not None:
+                self.scheduler_worker_service.stop()
             self.scheduler_service.stop(self.event_bus)
 
         self.risk_service.stop(self.event_bus)

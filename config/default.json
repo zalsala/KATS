@@ -112,6 +112,7 @@
     "enabled": false,
     "strategy_auto_start": false,
     "strategy_auto_start_id": "",
-    "log_cleanup_interval_seconds": 86400
+    "log_cleanup_interval_seconds": 86400,
+    "tick_interval_seconds": 1.0
   }
 }

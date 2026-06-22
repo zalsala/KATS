@@ -50,6 +50,30 @@ class TestServiceWiring:
         context = build_integration_context(root)
 
         assert context.scheduler_service is not None
+        assert context.scheduler_worker_service is not None
+
+    def test_scheduler_worker_starts_and_stops_with_context(self, tmp_path, project_root) -> None:
+        root = prepare_integration_root(tmp_path, project_root)
+        write_user_settings(
+            root,
+            {
+                "scheduler": {
+                    "enabled": True,
+                    "tick_interval_seconds": 0.1,
+                }
+            },
+        )
+        context = build_integration_context(root)
+
+        context.start()
+        try:
+            assert context.scheduler_worker_service is not None
+            assert context.scheduler_worker_service.is_running is True
+        finally:
+            context.stop()
+
+        assert context.scheduler_worker_service is not None
+        assert context.scheduler_worker_service.is_running is False
 
     def test_websocket_service_created_with_transport(self, tmp_path, project_root) -> None:
         root = prepare_integration_root(tmp_path, project_root)
@@ -143,6 +167,23 @@ class TestHealthCheck:
 
         assert result.healthy is True
         assert any(item.name == "live_trading_disabled" and item.healthy for item in result.items)
+
+    def test_health_check_reports_scheduler_worker_when_enabled(
+        self,
+        tmp_path,
+        project_root,
+    ) -> None:
+        root = prepare_integration_root(tmp_path, project_root)
+        write_user_settings(root, {"scheduler": {"enabled": True}})
+        context = build_integration_context(root)
+        context.start()
+
+        result = HealthCheck().run(context)
+
+        worker_item = next(item for item in result.items if item.name == "scheduler_worker")
+        assert worker_item.healthy is True
+        assert worker_item.detail == "running"
+        context.stop()
 
 
 class TestFinalSmoke:

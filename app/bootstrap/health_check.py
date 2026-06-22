@@ -47,6 +47,8 @@ class HealthCheck:
         scheduler_ok = context.scheduler_service is not None if scheduler_enabled else True
         scheduler_detail = "enabled" if scheduler_enabled else "disabled"
 
+        worker_ok, worker_detail = _scheduler_worker_health(context)
+
         plugins_ok, plugins_detail = _plugin_health(context)
 
         items = (
@@ -69,10 +71,28 @@ class HealthCheck:
             ),
             HealthCheckItem("websocket", True, websocket_detail),
             HealthCheckItem("scheduler", scheduler_ok, scheduler_detail),
+            HealthCheckItem("scheduler_worker", worker_ok, worker_detail),
             HealthCheckItem("plugins", plugins_ok, plugins_detail),
         )
         healthy = all(item.healthy for item in items)
         return HealthCheckResult(healthy=healthy, items=items)
+
+
+def _scheduler_worker_health(context: ApplicationContext) -> tuple[bool, str]:
+    """Summarize scheduler worker status for health checks."""
+    if not context.settings.config.scheduler.enabled:
+        return True, "stopped"
+
+    if context.scheduler_worker_service is None:
+        return False, "missing"
+
+    if context.scheduler_worker_service.is_running:
+        return True, "running"
+
+    if context.is_running:
+        return False, "stopped"
+
+    return True, "stopped"
 
 
 def _plugin_health(context: ApplicationContext) -> tuple[bool, str]:

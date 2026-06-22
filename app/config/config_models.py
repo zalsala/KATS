@@ -184,6 +184,7 @@ class SchedulerConfig(BaseModel):
     strategy_auto_start: bool = False
     strategy_auto_start_id: str = ""
     log_cleanup_interval_seconds: int = Field(default=86400, ge=60, le=604_800)
+    tick_interval_seconds: float = Field(default=1.0, ge=0.1, le=60.0)
 
 
 class KatsConfig(BaseModel):

@@ -114,10 +114,7 @@ class TestOrderableAmountScript:
         output = capsys.readouterr().out
 
         assert output == (
-            "rt_cd: 0\n"
-            "msg_cd: MCA00000\n"
-            "msg1: ok\n"
-            "orderable_amount: 1500000\n"
+            "rt_cd: 0\n" "msg_cd: MCA00000\n" "msg1: ok\n" "orderable_amount: 1500000\n"
         )
         assert "12345678" not in output
         assert "Bearer" not in output

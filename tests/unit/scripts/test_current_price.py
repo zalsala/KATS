@@ -102,12 +102,7 @@ class TestCurrentPriceScript:
         module.print_result(result)
         output = capsys.readouterr().out
 
-        assert output == (
-            "rt_cd: 0\n"
-            "msg_cd: MCA00000\n"
-            "msg1: ok\n"
-            "current_price: 70000\n"
-        )
+        assert output == ("rt_cd: 0\n" "msg_cd: MCA00000\n" "msg1: ok\n" "current_price: 70000\n")
         assert "Bearer" not in output
         assert "access_token" not in output
 

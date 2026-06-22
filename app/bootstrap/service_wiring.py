@@ -22,6 +22,7 @@ from app.service.notification.notification_service import build_notification_ser
 from app.service.portfolio.portfolio_service import build_portfolio_service
 from app.service.risk.risk_service import build_risk_service
 from app.service.scheduler.scheduler_service import build_scheduler_service
+from app.service.scheduler.scheduler_worker_service import build_scheduler_worker_service
 from app.service.strategy.strategy_service import build_strategy_service
 
 if TYPE_CHECKING:
@@ -71,6 +72,7 @@ def wire_application_context(
     )
 
     scheduler_service = None
+    scheduler_worker_service = None
     if settings.config.scheduler.enabled:
         scheduler_service = build_scheduler_service(
             event_bus=bus,
@@ -79,6 +81,10 @@ def wire_application_context(
             portfolio_service=portfolio_service,
             plugin_manager=plugin_manager,
             logger_service=logger_service,
+        )
+        scheduler_worker_service = build_scheduler_worker_service(
+            scheduler_service,
+            interval_seconds=settings.config.scheduler.tick_interval_seconds,
         )
 
     order_service = build_order_service(
@@ -109,6 +115,7 @@ def wire_application_context(
         order_service=order_service,
         websocket_service=websocket_service,
         scheduler_service=scheduler_service,
+        scheduler_worker_service=scheduler_worker_service,
         plugin_manager=plugin_manager,
         plugin_load_report=plugin_load_report,
     )
