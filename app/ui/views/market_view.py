@@ -32,6 +32,7 @@ class MarketView(QWidget):
         bind_view_model(self._vm, lambda _field: self.refresh())
         bind_view_model(self._chart_vm, lambda _field: self._update_chart_widget())
         self.refresh()
+        self._load_chart()
 
     @property
     def chart_widget(self) -> ChartWidget:
@@ -42,8 +43,11 @@ class MarketView(QWidget):
         self._chart_widget.set_candles(self._chart_vm.candles, symbol=self._chart_vm.symbol_code)
 
     def refresh(self) -> None:
-        """Refresh quote labels and chart candles."""
+        """Refresh quote labels."""
         self._symbol.setText(self._vm.symbol_code or self._chart_vm.symbol_code or "-")
         self._price.setText(str(self._vm.current_price) if self._vm.current_price else "-")
         self._updated.setText(self._vm.last_updated or "-")
+
+    def _load_chart(self) -> None:
+        """Load chart candles from ChartService via ChartViewModel."""
         self._chart_vm.refresh()

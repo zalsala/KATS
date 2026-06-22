@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.ui.chart_event_bridge import ChartEventBridge
 from app.ui.context.ui_app_context import UiAppContext
 from app.ui.controllers.ui_controller import UiController
 from app.ui.controllers.ui_event_bridge import UiEventBridge
@@ -16,6 +17,7 @@ class UiSession:
         self.view_model = MainViewModel(chart_service=context.chart_service)
         self.controller = UiController(context=context)
         self.event_bridge = UiEventBridge(controller=self.controller, view_model=self.view_model)
+        self.chart_event_bridge = ChartEventBridge(chart_view_model=self.view_model.chart)
         self._started = False
 
     def start(self) -> None:
@@ -24,6 +26,7 @@ class UiSession:
             return
         self.context.start()
         self.event_bridge.register(self.context.event_bus)
+        self.chart_event_bridge.register(self.context.event_bus)
         self.event_bridge.refresh_all()
         self._started = True
 
@@ -31,6 +34,7 @@ class UiSession:
         """Stop UI subscriptions and services."""
         if not self._started:
             return
+        self.chart_event_bridge.unregister(self.context.event_bus)
         self.event_bridge.unregister(self.context.event_bus)
         self.context.stop()
         self._started = False

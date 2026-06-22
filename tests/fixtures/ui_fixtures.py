@@ -74,7 +74,6 @@ def build_test_ui_context(*, order_service: MockOrderService | None = None) -> U
     strategy_service = build_strategy_service(event_bus=event_bus)
     risk_service = build_risk_service(portfolio_service=portfolio_service, event_bus=event_bus)
     backtest_service = build_backtest_service()
-    chart_service = build_chart_service()
     config_manager = MagicMock()
     settings = MagicMock()
     settings.environment = "test"
@@ -82,6 +81,7 @@ def build_test_ui_context(*, order_service: MockOrderService | None = None) -> U
     settings.secrets.account_no = "12345678"
     settings.config.application.version = "1.0.0"
     config_manager.load.return_value = settings
+    chart_service = build_chart_service(event_bus=event_bus)
     return UiAppContext(
         config_manager=config_manager,
         event_bus=event_bus,

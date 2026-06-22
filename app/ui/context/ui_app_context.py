@@ -11,7 +11,7 @@ from app.config.config_manager import ConfigManager
 from app.context.application_context import ApplicationContext
 from app.events.event_bus_service import EventBusService
 from app.service.backtest.backtest_service import BacktestService
-from app.service.chart.chart_service import ChartService, build_chart_service
+from app.service.chart.chart_service import ChartService
 from app.service.order.order_service import OrderService
 from app.service.portfolio.portfolio_service import PortfolioService
 from app.service.risk.risk_service import RiskService
@@ -73,7 +73,7 @@ class UiAppContext:
             strategy_service=application_context.strategy_service,
             risk_service=application_context.risk_service,
             backtest_service=application_context.backtest_service,
-            chart_service=build_chart_service(),
+            chart_service=application_context.chart_service,
             order_service=application_context.order_service,
             websocket_service=application_context.websocket_service,
             application_context=application_context,
@@ -89,6 +89,7 @@ class UiAppContext:
             self.portfolio_service.start(self.event_bus)
             self.strategy_service.start(self.event_bus)
             self.risk_service.start(self.event_bus)
+            self.chart_service.start(self.event_bus)
         self._started = True
 
     def stop(self) -> None:
@@ -99,6 +100,7 @@ class UiAppContext:
             self.application_context.stop()
         else:
             self.risk_service.stop(self.event_bus)
+            self.chart_service.stop(self.event_bus)
             self.strategy_service.stop(self.event_bus)
             self.portfolio_service.stop(self.event_bus)
         self._started = False

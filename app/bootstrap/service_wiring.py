@@ -18,6 +18,7 @@ from app.core.logging.logger_service import LoggerService
 from app.database.database_manager import DatabaseManager
 from app.events.event_bus_service import EventBusService, build_event_bus_service
 from app.service.backtest.backtest_service import build_backtest_service
+from app.service.chart.chart_service import build_chart_service
 from app.service.notification.notification_service import build_notification_service
 from app.service.portfolio.portfolio_service import build_portfolio_service
 from app.service.risk.risk_service import build_risk_service
@@ -67,6 +68,7 @@ def wire_application_context(
     )
     risk_service = build_risk_service(portfolio_service=portfolio_service, event_bus=bus)
     backtest_service = build_backtest_service()
+    chart_service = build_chart_service(event_bus=bus)
     notification_service = build_notification_service(
         event_bus=bus,
         database_manager=database_manager,
@@ -116,6 +118,7 @@ def wire_application_context(
         strategy_service=strategy_service,
         risk_service=risk_service,
         backtest_service=backtest_service,
+        chart_service=chart_service,
         notification_service=notification_service,
         authentication=authentication,
         order_service=order_service,

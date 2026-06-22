@@ -17,6 +17,7 @@ from app.scheduler.rules import IntervalRule
 from app.scheduler.scheduled_task import ScheduledTask
 from app.scheduler.task_types import ScheduledTaskType
 from app.service.backtest.backtest_service import BacktestService
+from app.service.chart.chart_service import ChartService
 from app.service.notification.notification_service import NotificationService
 from app.service.order.order_service import OrderService
 from app.service.portfolio.portfolio_service import PortfolioService
@@ -47,6 +48,7 @@ class ApplicationContext:
     strategy_service: StrategyService
     risk_service: RiskService
     backtest_service: BacktestService
+    chart_service: ChartService
     notification_service: NotificationService
     authentication: AuthenticationComponents | None = None
     order_service: OrderService | None = None
@@ -79,6 +81,7 @@ class ApplicationContext:
         self.portfolio_service.start(self.event_bus)
         self.strategy_service.start(self.event_bus)
         self.risk_service.start(self.event_bus)
+        self.chart_service.start(self.event_bus)
 
         if self.scheduler_service is not None and self.settings.config.scheduler.enabled:
             self._register_scheduler_tasks()
@@ -105,6 +108,7 @@ class ApplicationContext:
         self.risk_service.stop(self.event_bus)
         self.strategy_service.stop(self.event_bus)
         self.portfolio_service.stop(self.event_bus)
+        self.chart_service.stop(self.event_bus)
         self.notification_service.stop(self.event_bus)
 
         self._running = False
