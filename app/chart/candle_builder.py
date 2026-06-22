@@ -6,8 +6,9 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.chart.candle import Candle
+from app.chart.timeframe import DEFAULT_TIMEFRAME, Timeframe, resolve_timeframe
 
-DEFAULT_INTERVAL = "1m"
+DEFAULT_INTERVAL = DEFAULT_TIMEFRAME.value
 
 
 def _to_decimal(value: Decimal | str | int | float) -> Decimal:
@@ -16,22 +17,43 @@ def _to_decimal(value: Decimal | str | int | float) -> Decimal:
     return Decimal(str(value).replace(",", ""))
 
 
-def _minute_start(timestamp: datetime) -> datetime:
-    """Align a timestamp to the start of its one-minute bucket."""
-    return timestamp.replace(second=0, microsecond=0)
+def bucket_start(timestamp: datetime, timeframe: Timeframe) -> datetime:
+    """Align a timestamp to the start of its candle bucket."""
+    aligned = timestamp.replace(second=0, microsecond=0)
+    if timeframe == Timeframe.M1:
+        return aligned
+    if timeframe == Timeframe.M5:
+        return aligned.replace(minute=(aligned.minute // 5) * 5)
+    if timeframe == Timeframe.M15:
+        return aligned.replace(minute=(aligned.minute // 15) * 15)
+    if timeframe == Timeframe.H1:
+        return aligned.replace(minute=0)
+    msg = f"Unsupported timeframe: {timeframe}"
+    raise ValueError(msg)
 
 
 class CandleBuilder:
-    """Aggregates trades into one-minute OHLCV candles."""
+    """Aggregates trades into OHLCV candles for a single timeframe."""
 
-    def __init__(self, symbol: str, interval: str = DEFAULT_INTERVAL) -> None:
+    def __init__(
+        self,
+        symbol: str,
+        *,
+        timeframe: Timeframe | str = DEFAULT_TIMEFRAME,
+        interval: str | None = None,
+    ) -> None:
         self._symbol = symbol
-        self._interval = interval
+        self._timeframe = resolve_timeframe(timeframe)
+        self._interval = interval or self._timeframe.value
         self._current: Candle | None = None
 
     @property
     def symbol(self) -> str:
         return self._symbol
+
+    @property
+    def timeframe(self) -> Timeframe:
+        return self._timeframe
 
     @property
     def interval(self) -> str:
@@ -44,13 +66,13 @@ class CandleBuilder:
         *,
         timestamp: datetime,
     ) -> Candle | None:
-        """Apply a trade tick and return a finalized candle when the minute rolls over."""
+        """Apply a trade tick and return a finalized candle when the bucket rolls over."""
         if volume < 0:
             msg = "Trade volume must be non-negative"
             raise ValueError(msg)
 
         trade_price = _to_decimal(price)
-        bucket = _minute_start(timestamp)
+        bucket = bucket_start(timestamp, self._timeframe)
 
         if self._current is None or self._current.timestamp != bucket:
             finalized = self.finalize()

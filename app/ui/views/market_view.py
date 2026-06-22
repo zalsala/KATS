@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QComboBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.chart.timeframe import Timeframe
 from app.ui.controllers.ui_controller import UiController
 from app.ui.viewmodels.main_view_model import MainViewModel
 from app.ui.views.view_base import bind_view_model
@@ -44,8 +46,18 @@ class MarketView(QWidget):
         self._ws_status = QLabel("-")
         self._sub_status = QLabel("-")
         self._status_message = QLabel("")
+        self._diag_last_time = QLabel("-")
+        self._diag_last_symbol = QLabel("-")
+        self._diag_last_price = QLabel("-")
+        self._diag_tick_count = QLabel("-")
+        self._diag_candle_count = QLabel("-")
+        self._timeframe_selector = QComboBox()
+        for timeframe in Timeframe:
+            self._timeframe_selector.addItem(timeframe.value, timeframe)
+        self._timeframe_selector.setCurrentText(self._chart_vm.selected_timeframe.value)
 
         self._symbol_input.textChanged.connect(self._on_symbol_changed)
+        self._timeframe_selector.currentIndexChanged.connect(self._on_timeframe_changed)
         self._connect_button.clicked.connect(self._on_connect_clicked)
         self._disconnect_button.clicked.connect(self._on_disconnect_clicked)
         self._subscribe_button.clicked.connect(self._on_subscribe_clicked)
@@ -58,6 +70,7 @@ class MarketView(QWidget):
 
         controls = QFormLayout()
         controls.addRow("Symbol code", self._symbol_input)
+        controls.addRow("Timeframe", self._timeframe_selector)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self._connect_button)
@@ -70,12 +83,20 @@ class MarketView(QWidget):
         controls.addRow("Subscribed", self._sub_status)
         controls.addRow("Status", self._status_message)
 
+        diagnostics = QFormLayout()
+        diagnostics.addRow("Last received", self._diag_last_time)
+        diagnostics.addRow("Last symbol", self._diag_last_symbol)
+        diagnostics.addRow("Last price", self._diag_last_price)
+        diagnostics.addRow("Ticks received", self._diag_tick_count)
+        diagnostics.addRow("Candles built", self._diag_candle_count)
+
         layout = QVBoxLayout(self)
         layout.addLayout(form)
         layout.addLayout(controls)
+        layout.addLayout(diagnostics)
         layout.addWidget(self._chart_widget, stretch=1)
         bind_view_model(self._vm, lambda _field: self.refresh())
-        bind_view_model(self._chart_vm, lambda _field: self._update_chart_widget())
+        bind_view_model(self._chart_vm, lambda _field: self._on_chart_changed())
         self.refresh()
         self._load_chart()
 
@@ -84,8 +105,19 @@ class MarketView(QWidget):
         """Return the embedded chart widget."""
         return self._chart_widget
 
+    def _on_chart_changed(self) -> None:
+        self._update_chart_widget()
+        self._refresh_diagnostics()
+
     def _update_chart_widget(self) -> None:
         self._chart_widget.set_candles(self._chart_vm.candles, symbol=self._chart_vm.symbol_code)
+
+    def _refresh_diagnostics(self) -> None:
+        self._diag_last_time.setText(self._chart_vm.last_trade_time or "-")
+        self._diag_last_symbol.setText(self._chart_vm.last_trade_symbol or "-")
+        self._diag_last_price.setText(self._chart_vm.last_trade_price or "-")
+        self._diag_tick_count.setText(str(self._chart_vm.total_ticks_received))
+        self._diag_candle_count.setText(str(self._chart_vm.total_candles))
 
     def refresh(self) -> None:
         """Refresh quote labels and connection state."""
@@ -99,12 +131,19 @@ class MarketView(QWidget):
     def _load_chart(self) -> None:
         """Load chart candles from ChartService via ChartViewModel."""
         self._chart_vm.refresh()
+        self._refresh_diagnostics()
 
     def _normalized_symbol(self) -> str:
         return self._symbol_input.text().strip()
 
     def _on_symbol_changed(self, text: str) -> None:
         self._vm.set_symbol_input(text.strip())
+
+    def _on_timeframe_changed(self, _index: int) -> None:
+        timeframe = self._timeframe_selector.currentData()
+        if timeframe is None:
+            return
+        self._chart_vm.set_timeframe(timeframe)
 
     def _on_connect_clicked(self) -> None:
         try:

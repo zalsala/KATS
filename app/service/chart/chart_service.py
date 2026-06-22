@@ -8,32 +8,43 @@ from decimal import Decimal
 from typing import Any
 
 from app.chart.candle import Candle
-from app.chart.candle_builder import DEFAULT_INTERVAL, CandleBuilder
+from app.chart.candle_builder import CandleBuilder
 from app.chart.candle_store import CandleStore
 from app.chart.chart_event_handler import ChartEventHandler
 from app.chart.in_memory_candle_store import InMemoryCandleStore
+from app.chart.timeframe import (
+    DEFAULT_TIMEFRAME,
+    SUPPORTED_TIMEFRAMES,
+    Timeframe,
+    resolve_timeframe,
+)
 from app.events.event_bus_service import EventBusService
 
 logger = logging.getLogger(__name__)
 
+BuilderKey = tuple[str, str]
+
 
 class ChartService:
-    """Manage candle builders and persisted chart data per symbol."""
+    """Manage candle builders and persisted chart data per symbol and timeframe."""
 
     def __init__(
         self,
         *,
         store: CandleStore | None = None,
-        interval: str = DEFAULT_INTERVAL,
         event_handler: ChartEventHandler | None = None,
         event_bus: EventBusService | None = None,
     ) -> None:
         self._store = store or InMemoryCandleStore()
-        self._interval = interval
-        self._builders: dict[str, CandleBuilder] = {}
+        self._builders: dict[BuilderKey, CandleBuilder] = {}
         self._event_bus = event_bus
         self._handler = event_handler or ChartEventHandler(chart_service=self)
         self._started = False
+        self._total_ticks = 0
+        self._symbol_ticks: dict[str, int] = {}
+        self._last_symbol = ""
+        self._last_price = ""
+        self._last_trade_time: datetime | None = None
 
     @property
     def store(self) -> CandleStore:
@@ -68,14 +79,14 @@ class ChartService:
         *,
         timestamp: datetime,
     ) -> None:
-        """Apply a trade tick and persist candles when a minute closes."""
-        builder = self._builders.setdefault(
-            symbol,
-            CandleBuilder(symbol=symbol, interval=self._interval),
-        )
-        finalized = builder.update_trade(price, volume, timestamp=timestamp)
-        if finalized is not None:
-            self._store.save_candle(finalized)
+        """Apply a trade tick to all supported timeframes for the symbol."""
+        trade_price = Decimal(str(price).replace(",", ""))
+        for timeframe in SUPPORTED_TIMEFRAMES:
+            builder = self._get_builder(symbol, timeframe)
+            finalized = builder.update_trade(price, volume, timestamp=timestamp)
+            if finalized is not None:
+                self._store.save_candle(finalized)
+        self._record_trade(symbol, trade_price, timestamp)
 
     def on_market_tick(self, payload: dict[str, Any]) -> None:
         """Apply a MarketDataEvent payload as a realtime trade tick."""
@@ -106,34 +117,93 @@ class ChartService:
     def get_candles(
         self,
         symbol: str,
-        interval: str | None = None,
+        timeframe: str | Timeframe = DEFAULT_TIMEFRAME,
         *,
         limit: int | None = None,
         include_current: bool = True,
     ) -> list[Candle]:
-        """Return stored candles, optionally including the in-progress candle."""
-        resolved_interval = interval or self._interval
-        candles = self._store.load_candles(symbol, resolved_interval)
+        """Return stored candles for a symbol and timeframe."""
+        resolved_timeframe = resolve_timeframe(timeframe).value
+        candles = self._store.load_candles(symbol, resolved_timeframe)
 
         if include_current:
-            builder = self._builders.get(symbol)
+            builder = self._builders.get((symbol, resolved_timeframe))
             current = builder.get_current_candle() if builder is not None else None
-            if current is not None and current.interval == resolved_interval:
+            if current is not None and current.interval == resolved_timeframe:
                 candles = [*candles, current]
 
         if limit is not None:
             return candles[-limit:]
         return candles
 
-    def finalize_symbol(self, symbol: str) -> Candle | None:
-        """Finalize and persist the in-progress candle for a symbol."""
-        builder = self._builders.get(symbol)
+    def finalize_symbol(
+        self,
+        symbol: str,
+        timeframe: str | Timeframe | None = None,
+    ) -> Candle | None:
+        """Finalize and persist in-progress candles for a symbol."""
+        if timeframe is not None:
+            return self._finalize_builder(symbol, resolve_timeframe(timeframe).value)
+
+        last_finalized: Candle | None = None
+        for supported in SUPPORTED_TIMEFRAMES:
+            finalized = self._finalize_builder(symbol, supported.value)
+            if finalized is not None:
+                last_finalized = finalized
+        return last_finalized
+
+    def get_chart_stats(
+        self,
+        symbol: str | None = None,
+        timeframe: str | Timeframe = DEFAULT_TIMEFRAME,
+    ) -> dict[str, int | str]:
+        """Return chart diagnostics for validation and UI observability."""
+        resolved_timeframe = resolve_timeframe(timeframe).value
+        if symbol is not None:
+            ticks = self._symbol_ticks.get(symbol, 0)
+            candles = len(self.get_candles(symbol, resolved_timeframe))
+        else:
+            ticks = self._total_ticks
+            candles = sum(
+                len(self.get_candles(sym, resolved_timeframe)) for sym in self._symbol_ticks
+            )
+
+        return {
+            "ticks": ticks,
+            "candles": candles,
+            "symbols": len(self._symbol_ticks),
+            "timeframe": resolved_timeframe,
+            "last_symbol": self._last_symbol,
+            "last_price": self._last_price,
+            "last_trade_time": (
+                self._last_trade_time.isoformat() if self._last_trade_time is not None else ""
+            ),
+        }
+
+    def _get_builder(self, symbol: str, timeframe: Timeframe) -> CandleBuilder:
+        key = (symbol, timeframe.value)
+        return self._builders.setdefault(
+            key,
+            CandleBuilder(symbol=symbol, timeframe=timeframe),
+        )
+
+    def _finalize_builder(self, symbol: str, timeframe: str) -> Candle | None:
+        builder = self._builders.get((symbol, timeframe))
         if builder is None:
             return None
         finalized = builder.finalize()
         if finalized is not None:
             self._store.save_candle(finalized)
         return finalized
+
+    def _record_trade(self, symbol: str, price: Decimal, timestamp: datetime) -> None:
+        self._total_ticks += 1
+        self._symbol_ticks[symbol] = self._symbol_ticks.get(symbol, 0) + 1
+        self._last_symbol = symbol
+        self._last_price = str(price)
+        self._last_trade_time = (
+            timestamp if timestamp.tzinfo is not None else timestamp.replace(tzinfo=UTC)
+        )
 
 
 def _extract_volume(payload: dict[str, Any]) -> int:
@@ -170,8 +240,7 @@ def _parse_market_timestamp(payload: dict[str, Any]) -> datetime:
 def build_chart_service(
     *,
     store: CandleStore | None = None,
-    interval: str = DEFAULT_INTERVAL,
     event_bus: EventBusService | None = None,
 ) -> ChartService:
     """Create a ChartService with default in-memory storage."""
-    return ChartService(store=store, interval=interval, event_bus=event_bus)
+    return ChartService(store=store, event_bus=event_bus)

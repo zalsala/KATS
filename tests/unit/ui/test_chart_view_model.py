@@ -52,3 +52,17 @@ def test_chart_view_model_set_symbol() -> None:
 
     assert view_model.symbol_code == "000660"
     assert view_model.candles[0].symbol == "000660"
+
+
+def test_chart_view_model_refresh_updates_diagnostics() -> None:
+    service = ChartService(store=InMemoryCandleStore())
+    _seed_candles(service)
+    view_model = ChartViewModel(service, symbol_code=DEFAULT_SYMBOL)
+
+    view_model.refresh()
+
+    assert view_model.total_ticks_received == 2
+    assert view_model.total_candles == 1
+    assert view_model.last_trade_symbol == DEFAULT_SYMBOL
+    assert view_model.last_trade_price == "70500"
+    assert view_model.last_trade_time

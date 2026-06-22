@@ -84,3 +84,22 @@ def test_finalize_symbol_persists_in_progress_candle() -> None:
         "005930",
         "1m",
     )
+
+
+def test_get_chart_stats_tracks_ticks_and_candles() -> None:
+    service = ChartService(store=InMemoryCandleStore())
+    service.on_trade("005930", "70000", 10, timestamp=_ts(1, 3))
+    service.on_trade("005930", "70500", 5, timestamp=_ts(1, 40))
+    service.on_trade("005930", "71000", 3, timestamp=_ts(2, 0))
+
+    symbol_stats = service.get_chart_stats("005930")
+    global_stats = service.get_chart_stats()
+
+    assert symbol_stats["ticks"] == 3
+    assert symbol_stats["candles"] == 2
+    assert symbol_stats["symbols"] == 1
+    assert symbol_stats["last_symbol"] == "005930"
+    assert symbol_stats["last_price"] == "71000"
+    assert symbol_stats["last_trade_time"] == _ts(2, 0).isoformat()
+    assert global_stats["ticks"] == 3
+    assert global_stats["candles"] == 2
