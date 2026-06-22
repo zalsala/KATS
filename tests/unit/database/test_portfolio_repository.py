@@ -50,3 +50,17 @@ def test_portfolio_repository_save_positions_and_snapshot(tmp_path) -> None:
     latest = repository.get_latest_snapshot(snapshot.account_no)
     assert latest is not None
     assert latest.total_asset == snapshot.total_asset
+
+
+def test_portfolio_repository_save_portfolio(tmp_path) -> None:
+    manager = build_test_database_manager(tmp_path)
+    repository = manager.build_portfolio_repository()
+    snapshot = _build_snapshot()
+
+    snapshot_id = repository.save_portfolio(snapshot)
+
+    assert snapshot_id > 0
+    latest = repository.get_latest_snapshot(snapshot.account_no)
+    assert latest is not None
+    assert latest.total_asset == snapshot.total_asset
+    assert len(repository.list_positions(snapshot.account_no)) == 1

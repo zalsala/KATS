@@ -31,6 +31,16 @@ class InMemoryPortfolioStore:
         with self._lock:
             return PortfolioSnapshot.from_portfolio(self._portfolio)
 
+    def load_snapshot(self, snapshot: PortfolioSnapshot) -> None:
+        """Replace the current portfolio from a persisted snapshot."""
+        with self._lock:
+            self._portfolio = Portfolio(
+                account_no=snapshot.account_no,
+                cash=snapshot.cash,
+                positions={position.symbol_code: position for position in snapshot.positions},
+                updated_at=snapshot.updated_at,
+            )
+
     def update(self, updater: Callable[[Portfolio], None]) -> PortfolioSnapshot:
         """Apply an updater function and persist the result."""
         with self._lock:

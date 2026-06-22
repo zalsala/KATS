@@ -11,6 +11,7 @@ from app.events.event_bus_service import EventBusService
 from app.portfolio.in_memory_portfolio_store import InMemoryPortfolioStore
 from app.portfolio.portfolio_engine import PortfolioEngine
 from app.portfolio.portfolio_event_handler import PortfolioEventHandler
+from app.repository.interfaces.portfolio_repository import PortfolioRepository
 
 
 def _resolve_logger() -> logging.Logger:
@@ -31,10 +32,18 @@ class PortfolioService:
         event_handler: PortfolioEventHandler | None = None,
         event_bus: EventBusService | None = None,
         account_no: str = "",
+        portfolio_repository: PortfolioRepository | None = None,
     ) -> None:
+        self._account_no = account_no
+        self._portfolio_repository = portfolio_repository
         self._store = store or InMemoryPortfolioStore(account_no=account_no)
+        snapshot_listener = self._persist_snapshot if portfolio_repository is not None else None
         self._event_bus = event_bus
-        self._engine = engine or PortfolioEngine(store=self._store, event_bus=event_bus)
+        self._engine = engine or PortfolioEngine(
+            store=self._store,
+            event_bus=event_bus,
+            snapshot_listener=snapshot_listener,
+        )
         self._handler = event_handler or PortfolioEventHandler(engine=self._engine)
         self._logger = _resolve_logger()
         self._started = False
@@ -47,8 +56,14 @@ class PortfolioService:
     def event_handler(self) -> PortfolioEventHandler:
         return self._handler
 
+    @property
+    def portfolio_repository(self) -> PortfolioRepository | None:
+        """Return the optional portfolio persistence repository."""
+        return self._portfolio_repository
+
     def start(self, event_bus: EventBusService | None = None) -> None:
         """Register portfolio handlers with EventBus."""
+        self._restore_portfolio()
         bus = event_bus or self._event_bus
         if bus is None:
             msg = "EventBusService is required to start portfolio subscriptions"
@@ -83,20 +98,40 @@ class PortfolioService:
         with CorrelationContext():
             return self._engine.apply_market_data(payload)
 
+    def _restore_portfolio(self) -> None:
+        if self._portfolio_repository is None:
+            return
+        snapshot = self._portfolio_repository.get_latest_snapshot(self._account_no)
+        if snapshot is None:
+            return
+        self._store.load_snapshot(snapshot)
+        self._logger.info(
+            "Portfolio restored from repository account_no=%s positions=%s",
+            snapshot.account_no,
+            len(snapshot.positions),
+        )
+
+    def _persist_snapshot(self, snapshot: PortfolioSnapshot) -> None:
+        if self._portfolio_repository is None:
+            return
+        try:
+            self._portfolio_repository.save_portfolio(snapshot)
+        except Exception:
+            self._logger.exception(
+                "Failed to persist portfolio snapshot account_no=%s",
+                snapshot.account_no,
+            )
+
 
 def build_portfolio_service(
     *,
     event_bus: EventBusService | None = None,
     account_no: str = "",
+    portfolio_repository: PortfolioRepository | None = None,
 ) -> PortfolioService:
     """Create a PortfolioService wired with default components."""
-    store = InMemoryPortfolioStore(account_no=account_no)
-    engine = PortfolioEngine(store=store, event_bus=event_bus)
-    handler = PortfolioEventHandler(engine=engine)
     return PortfolioService(
-        store=store,
-        engine=engine,
-        event_handler=handler,
         event_bus=event_bus,
         account_no=account_no,
+        portfolio_repository=portfolio_repository,
     )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 
@@ -29,10 +30,12 @@ class PortfolioEngine:
         store: InMemoryPortfolioStore,
         event_bus: EventBusService | None = None,
         source: str = "portfolio_engine",
+        snapshot_listener: Callable[[PortfolioSnapshot], None] | None = None,
     ) -> None:
         self._store = store
         self._event_bus = event_bus
         self._source = source
+        self._snapshot_listener = snapshot_listener
 
     def apply_account(self, payload: dict[str, Any]) -> PortfolioSnapshot:
         """Apply account balance and holdings from an AccountEvent payload."""
@@ -57,6 +60,7 @@ class PortfolioEngine:
 
         snapshot = self._store.update(_update)
         self._publish_portfolio_event("account_sync", snapshot)
+        self._notify_snapshot_listener(snapshot)
         return snapshot
 
     def apply_execution(self, payload: dict[str, Any]) -> PortfolioSnapshot:
@@ -89,6 +93,7 @@ class PortfolioEngine:
 
         snapshot = self._store.update(_update)
         self._publish_portfolio_event("execution_applied", snapshot)
+        self._notify_snapshot_listener(snapshot)
         return snapshot
 
     def apply_market_data(self, payload: dict[str, Any]) -> PortfolioSnapshot:
@@ -103,6 +108,7 @@ class PortfolioEngine:
 
         snapshot = self._store.update(_update)
         self._publish_portfolio_event("market_data_applied", snapshot)
+        self._notify_snapshot_listener(snapshot)
         return snapshot
 
     def get_snapshot(self) -> PortfolioSnapshot:
@@ -120,7 +126,13 @@ class PortfolioEngine:
 
         snapshot = self._store.update(_update)
         self._publish_portfolio_event("cash_adjusted", snapshot)
+        self._notify_snapshot_listener(snapshot)
         return snapshot
+
+    def _notify_snapshot_listener(self, snapshot: PortfolioSnapshot) -> None:
+        if self._snapshot_listener is None:
+            return
+        self._snapshot_listener(snapshot)
 
     def _publish_portfolio_event(self, reason: str, snapshot: PortfolioSnapshot) -> None:
         if self._event_bus is None:

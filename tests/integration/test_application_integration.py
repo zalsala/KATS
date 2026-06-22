@@ -11,6 +11,7 @@ from tests.fixtures.integration_fixtures import (
     prepare_integration_root,
     write_user_settings,
 )
+from tests.fixtures.portfolio_fixtures import sample_account_payload
 from tests.fixtures.ws_fixtures import MockWsTransport
 
 pytestmark = pytest.mark.integration
@@ -32,6 +33,40 @@ class TestApplicationBootstrap:
         assert context.notification_service is not None
         assert context.order_service is not None
         assert context.authentication is not None
+        assert context.portfolio_repository is not None
+        assert context.portfolio_service.portfolio_repository is context.portfolio_repository
+
+    def test_portfolio_restores_after_restart(self, tmp_path, project_root) -> None:
+        root = prepare_integration_root(tmp_path, project_root)
+        env_path = root / ".env"
+        env_path.write_text(
+            (
+                "KATS_ENV=development\n"
+                "KIS_APP_KEY=test-key\n"
+                "KIS_APP_SECRET=test-secret\n"
+                "KIS_ACCOUNT_NO=12345678\n"
+            ),
+            encoding="utf-8",
+        )
+        from app.config.config_manager import ConfigManager
+
+        ConfigManager.reset_instance()
+        first = build_integration_context(root)
+        first.start()
+        first.portfolio_service.apply_account(sample_account_payload(account_no="12345678"))
+        expected_asset = first.portfolio_service.get_snapshot().total_asset
+        first.stop()
+
+        ConfigManager.reset_instance()
+        second = build_integration_context(root)
+        second.start()
+        restored = second.portfolio_service.get_snapshot()
+
+        assert restored.total_asset == expected_asset
+        assert restored.account_no == "12345678"
+        assert len(restored.positions) == 1
+        assert restored.positions[0].symbol_code == "005930"
+        second.stop()
 
 
 class TestServiceWiring:

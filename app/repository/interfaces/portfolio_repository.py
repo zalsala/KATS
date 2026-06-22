@@ -25,3 +25,6 @@ class PortfolioRepository(Protocol):
 
     def get_latest_snapshot(self, account_no: str) -> PortfolioSnapshot | None:
         """Return the latest snapshot for an account."""
+
+    def save_portfolio(self, snapshot: PortfolioSnapshot) -> int:
+        """Persist positions and snapshot together."""

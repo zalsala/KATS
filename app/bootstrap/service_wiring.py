@@ -59,7 +59,12 @@ def wire_application_context(
         load_plugins=False,
         database_manager=database_manager,
     )
-    portfolio_service = build_portfolio_service(event_bus=bus, account_no=account_no)
+    portfolio_repository = database_manager.build_portfolio_repository()
+    portfolio_service = build_portfolio_service(
+        event_bus=bus,
+        account_no=account_no,
+        portfolio_repository=portfolio_repository,
+    )
     risk_service = build_risk_service(portfolio_service=portfolio_service, event_bus=bus)
     backtest_service = build_backtest_service()
     notification_service = build_notification_service(
@@ -107,6 +112,7 @@ def wire_application_context(
         database_manager=database_manager,
         event_bus=bus,
         portfolio_service=portfolio_service,
+        portfolio_repository=portfolio_repository,
         strategy_service=strategy_service,
         risk_service=risk_service,
         backtest_service=backtest_service,

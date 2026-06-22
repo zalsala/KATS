@@ -91,3 +91,8 @@ class SQLitePortfolioRepository(BaseRepository):
     def get_latest_snapshot(self, account_no: str) -> PortfolioSnapshot | None:
         snapshots = self.list_snapshots(account_no, limit=1)
         return snapshots[0] if snapshots else None
+
+    def save_portfolio(self, snapshot: PortfolioSnapshot) -> int:
+        """Persist current positions and append a portfolio snapshot."""
+        self.save_positions(snapshot.account_no, list(snapshot.positions))
+        return self.save_snapshot(snapshot)

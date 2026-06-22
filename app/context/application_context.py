@@ -27,6 +27,7 @@ from app.service.strategy.strategy_service import StrategyService
 
 if TYPE_CHECKING:
     from app.config.app_settings import AppSettings
+    from app.repository.interfaces.portfolio_repository import PortfolioRepository
     from app.service.websocket.websocket_service import WebSocketService
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ class ApplicationContext:
     websocket_service: WebSocketService | None = None
     scheduler_service: SchedulerService | None = None
     scheduler_worker_service: SchedulerWorkerService | None = None
+    portfolio_repository: PortfolioRepository | None = None
     plugin_manager: PluginManager | None = None
     plugin_load_report: PluginLoadReport | None = None
     _running: bool = field(default=False, init=False)
