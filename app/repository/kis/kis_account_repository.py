@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 from app.broker.kis.api.account_api_keys import (
     INQUIRE_BALANCE,
@@ -64,6 +65,18 @@ class KisAccountRepository:
         dto = DepositDto.from_api_output(result.output)
         return DepositMapper.to_entity(dto, account=account)
 
+    def get_balance_summary(self, account: AccountContext) -> tuple[Deposit, AccountBalance]:
+        """Return deposit and balance summary from a single balance inquiry."""
+        result = self._fetch_balance(account)
+        queried_at = datetime.now(UTC)
+        deposit_dto = DepositDto.from_api_output(result.output)
+        balance_dto = AccountBalanceDto.from_api_output(result.output)
+        deposit = DepositMapper.to_entity(deposit_dto, account=account, queried_at=queried_at)
+        balance = AccountBalanceMapper.to_entity(
+            balance_dto, account=account, queried_at=queried_at
+        )
+        return deposit, balance
+
     def get_holding_stocks(self, account: AccountContext) -> list[HoldingStock]:
         """Return held stocks from balance inquiry."""
         result = self._fetch_balance(account)
@@ -109,5 +122,5 @@ class KisAccountRepository:
     def _fetch_balance(self, account: AccountContext) -> ApiResult:
         params = account.to_base_params()
         params.update(BALANCE_QUERY_PARAMS)
-        logger.info("Fetching account balance for CANO=%s", account.account_no)
+        logger.info("Fetching domestic stock account balance")
         return self._client.get(INQUIRE_BALANCE, params)

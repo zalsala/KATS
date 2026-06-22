@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.bootstrap.broker_wiring import (
+    build_account_service_from_settings,
     build_authentication,
     build_order_service,
     build_websocket_service_from_settings,
@@ -101,6 +102,11 @@ def wire_application_context(
         database_manager=database_manager,
         rest_transport=rest_transport,
     )
+    account_service = build_account_service_from_settings(
+        settings=settings,
+        auth=authentication,
+        rest_transport=rest_transport,
+    )
     websocket_service = build_websocket_service_from_settings(
         settings=settings,
         auth=authentication,
@@ -127,6 +133,7 @@ def wire_application_context(
         notification_service=notification_service,
         authentication=authentication,
         order_service=order_service,
+        account_service=account_service,
         websocket_service=websocket_service,
         realtime_market_data_publisher=realtime_market_data_publisher,
         scheduler_service=scheduler_service,

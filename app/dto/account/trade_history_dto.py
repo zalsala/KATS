@@ -42,10 +42,16 @@ class TradeHistoryDto(BaseModel):
     symbol_code: str = ""
     stock_name: str = ""
     side: str = ""
+    order_division: str = ""
+    order_quantity: str = ""
+    order_price: str = ""
+    remaining_quantity: str = ""
     executed_quantity: str = ""
     executed_price: str = ""
     executed_amount: str = ""
     order_number: str = ""
+    cancel_yn: str = ""
+    reject_reason: str = ""
 
     @classmethod
     def from_api_row(cls, row: dict[str, Any]) -> TradeHistoryDto:
@@ -56,10 +62,16 @@ class TradeHistoryDto(BaseModel):
             symbol_code=str(row.get("pdno", "")),
             stock_name=str(row.get("prdt_name", "")),
             side=str(row.get("sll_buy_dvsn_cd", "")),
+            order_division=str(row.get("ord_dvsn", "")),
+            order_quantity=str(row.get("ord_qty", "")),
+            order_price=str(row.get("ord_unpr", "")),
+            remaining_quantity=str(row.get("nccs_qty", "")),
             executed_quantity=str(row.get("tot_ccld_qty", "")),
             executed_price=str(row.get("avg_prvs", "")),
             executed_amount=str(row.get("tot_ccld_amt", "")),
             order_number=str(row.get("odno", "")),
+            cancel_yn=str(row.get("cncl_yn", "")),
+            reject_reason=str(row.get("rjct_rsn", "")),
         )
 
     @classmethod

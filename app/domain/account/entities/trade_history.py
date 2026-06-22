@@ -19,8 +19,14 @@ class TradeHistory:
     symbol_code: str
     stock_name: str
     side: str
+    order_division: str
+    order_quantity: Decimal
+    order_price: Decimal
+    remaining_quantity: Decimal
     executed_quantity: Decimal
     executed_price: Decimal
     executed_amount: Decimal
     order_number: str
+    cancel_yn: str
+    reject_reason: str
     queried_at: datetime

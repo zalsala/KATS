@@ -13,6 +13,10 @@ from app.broker.kis.websocket.reconnect_manager import ReconnectManager
 from app.broker.kis.websocket.subscription_manager import SubscriptionManager
 from app.broker.kis.websocket.ws_transport import WsTransport
 from app.order.kis_order_api_client import KisOrderApiClient
+from app.repository.kis.account_api_client import AccountApiClient
+from app.repository.kis.account_api_resolver import build_account_api_resolver
+from app.repository.kis.kis_account_repository import KisAccountRepository
+from app.service.account.account_service import AccountService, build_account_service
 from app.service.order.order_service import OrderService
 from app.service.websocket.websocket_service import WebSocketService, build_websocket_service
 
@@ -58,6 +62,31 @@ def build_order_service(
         order_api_client=api_client,
         order_repository=database_manager.build_order_repository(),
     )
+
+
+def build_account_service_from_settings(
+    *,
+    settings: AppSettings,
+    auth: AuthenticationComponents,
+    rest_transport: RestHttpTransport | None = None,
+) -> AccountService:
+    """Wire AccountService with KIS REST client and balance inquiry APIs."""
+    rest_client = build_kis_rest_client(
+        broker_config=settings.config.broker,
+        token_manager=auth.token_manager,
+        header_builder=auth.header_builder,
+        transport=rest_transport,
+        is_vts=settings.is_mock_account,
+    )
+    api_client = AccountApiClient(
+        rest_client=rest_client,
+        api_resolver=build_account_api_resolver(
+            ApiRegistry.default(),
+            use_mock_tr_id=settings.is_mock_account,
+        ),
+    )
+    repository = KisAccountRepository(account_api_client=api_client)
+    return build_account_service(account_repository=repository)
 
 
 def build_websocket_service_from_settings(

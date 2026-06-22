@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -11,16 +12,25 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QSpinBox,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
 from app.chart.timeframe import Timeframe
+from app.ui.controllers.account_summary_controller import AccountSummaryController
+from app.ui.controllers.order_entry_controller import OrderEntryController
+from app.ui.controllers.position_controller import PositionController
 from app.ui.controllers.ui_controller import UiController
+from app.ui.controllers.watchlist_controller import WatchlistController
 from app.ui.models.indicator_settings import IndicatorSettings
 from app.ui.viewmodels.main_view_model import MainViewModel
 from app.ui.views.view_base import bind_view_model
+from app.ui.widgets.account_summary_panel import AccountSummaryPanel
 from app.ui.widgets.chart_widget import ChartWidget
+from app.ui.widgets.order_entry_panel import OrderEntryPanel
+from app.ui.widgets.position_panel import PositionPanel
+from app.ui.widgets.watchlist_panel import WatchlistPanel
 
 
 class MarketView(QWidget):
@@ -31,12 +41,24 @@ class MarketView(QWidget):
         *,
         view_model: MainViewModel,
         controller: UiController,
+        watchlist_controller: WatchlistController | None = None,
+        order_entry_controller: OrderEntryController | None = None,
+        position_controller: PositionController | None = None,
+        account_summary_controller: AccountSummaryController | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._controller = controller
+        self._order_entry_controller = order_entry_controller
+        self._position_controller = position_controller
+        self._account_summary_controller = account_summary_controller
         self._vm = view_model.market
         self._chart_vm = view_model.chart
+        self._watchlist_vm = view_model.watchlist
+        self._watchlist_panel: WatchlistPanel | None = None
+        self._order_entry_panel: OrderEntryPanel | None = None
+        self._position_panel: PositionPanel | None = None
+        self._account_summary_panel: AccountSummaryPanel | None = None
         self._symbol = QLabel("-")
         self._price = QLabel("-")
         self._updated = QLabel("-")
@@ -123,9 +145,48 @@ class MarketView(QWidget):
         layout.addLayout(form)
         layout.addLayout(controls)
         layout.addLayout(diagnostics)
-        layout.addWidget(self._chart_widget, stretch=1)
+
+        chart_container = QSplitter()
+        if watchlist_controller is not None:
+            self._watchlist_panel = WatchlistPanel(
+                view_model=view_model.watchlist,
+                controller=watchlist_controller,
+            )
+            chart_container.addWidget(self._watchlist_panel)
+
+        chart_column = QSplitter(Qt.Orientation.Vertical)
+        chart_column.addWidget(self._chart_widget)
+        if account_summary_controller is not None:
+            self._account_summary_panel = AccountSummaryPanel(
+                view_model=view_model.account_summary,
+                controller=account_summary_controller,
+            )
+            chart_column.addWidget(self._account_summary_panel)
+        bottom_row = QSplitter(Qt.Orientation.Horizontal)
+        if order_entry_controller is not None:
+            self._order_entry_panel = OrderEntryPanel(
+                view_model=view_model.order_entry,
+                controller=order_entry_controller,
+            )
+            bottom_row.addWidget(self._order_entry_panel)
+        if position_controller is not None:
+            self._position_panel = PositionPanel(
+                view_model=view_model.position,
+                controller=position_controller,
+            )
+            bottom_row.addWidget(self._position_panel)
+        if bottom_row.count() > 0:
+            chart_column.addWidget(bottom_row)
+        if chart_column.count() > 1:
+            chart_column.setStretchFactor(0, 3)
+            chart_column.setStretchFactor(chart_column.count() - 1, 1)
+        chart_container.addWidget(chart_column)
+        chart_container.setStretchFactor(0, 0)
+        chart_container.setStretchFactor(1, 1)
+        layout.addWidget(chart_container, stretch=1)
         bind_view_model(self._vm, lambda _field: self.refresh())
-        bind_view_model(self._chart_vm, lambda _field: self._on_chart_changed())
+        bind_view_model(self._chart_vm, lambda field: self._on_chart_changed(field))
+        bind_view_model(view_model.watchlist, lambda _field: self._sync_market_symbol())
         self.refresh()
         self._load_chart()
 
@@ -134,9 +195,31 @@ class MarketView(QWidget):
         """Return the embedded chart widget."""
         return self._chart_widget
 
-    def _on_chart_changed(self) -> None:
+    @property
+    def watchlist_panel(self) -> WatchlistPanel | None:
+        """Return the embedded watchlist panel when configured."""
+        return self._watchlist_panel
+
+    @property
+    def order_entry_panel(self) -> OrderEntryPanel | None:
+        """Return the embedded order entry panel when configured."""
+        return self._order_entry_panel
+
+    @property
+    def position_panel(self) -> PositionPanel | None:
+        """Return the embedded position panel when configured."""
+        return self._position_panel
+
+    @property
+    def account_summary_panel(self) -> AccountSummaryPanel | None:
+        """Return the embedded account summary panel when configured."""
+        return self._account_summary_panel
+
+    def _on_chart_changed(self, field: str) -> None:
         self._update_chart_widget()
         self._refresh_diagnostics()
+        if field in {"candles", "timeframe", "symbol_code"}:
+            self._sync_market_symbol()
 
     def _update_chart_widget(self) -> None:
         self._chart_widget.set_candles(self._chart_vm.candles, symbol=self._chart_vm.symbol_code)
@@ -227,3 +310,16 @@ class MarketView(QWidget):
             self._vm.set_status_message(f"Unsubscribed: {symbol}")
         except Exception:
             self._vm.set_status_message("Unsubscribe failed")
+
+    def _sync_market_symbol(self) -> None:
+        symbol = (
+            self._watchlist_vm.selected_symbol
+            or self._chart_vm.symbol_code
+            or self._vm.symbol_input
+        )
+        if not symbol:
+            return
+        if self._order_entry_controller is not None:
+            self._order_entry_controller.sync_symbol(symbol)
+        if self._position_controller is not None:
+            self._position_controller.sync_selected_symbol(symbol)

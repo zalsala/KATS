@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.account.value_objects.account_context import AccountContext
+from app.dto.order.order_constants import ORDER_DIVISION_LIMIT
 
 
 class OrderRequestBase(BaseModel):
@@ -25,7 +26,7 @@ class CashBuyOrderRequest(OrderRequestBase):
     symbol_code: str
     quantity: str
     price: str
-    order_division: str = Field(default="00", description="00: limit order")
+    order_division: str = Field(default=ORDER_DIVISION_LIMIT, description="00: limit, 01: market")
 
     def to_body(self) -> dict[str, str]:
         """Convert to KIS order-cash request body."""
@@ -49,7 +50,7 @@ class CashSellOrderRequest(OrderRequestBase):
     symbol_code: str
     quantity: str
     price: str
-    order_division: str = Field(default="00", description="00: limit order")
+    order_division: str = Field(default=ORDER_DIVISION_LIMIT, description="00: limit, 01: market")
 
     def to_body(self) -> dict[str, str]:
         """Convert to KIS order-cash request body."""

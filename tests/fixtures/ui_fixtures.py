@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from app.domain.order.order import Order
@@ -75,6 +76,7 @@ def build_test_ui_context(*, order_service: MockOrderService | None = None) -> U
     risk_service = build_risk_service(portfolio_service=portfolio_service, event_bus=event_bus)
     backtest_service = build_backtest_service()
     config_manager = MagicMock()
+    config_manager.project_root = Path.cwd()
     settings = MagicMock()
     settings.environment = "test"
     settings.secrets.account_type = "mock"

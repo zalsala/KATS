@@ -34,19 +34,22 @@ class MockAccountRestClient:
         _ = raise_on_error
         self.calls.append({"method": "GET", "path": path, "tr_id": tr_id, "params": params})
         payload = self._responses_by_path.get(path, {})
+        rt_cd = str(payload.get("rt_cd", "0"))
+        msg_cd = str(payload.get("msg_cd", "MCA00000"))
+        msg1 = str(payload.get("msg1", "ok"))
         return ApiResult(
-            success=True,
+            success=rt_cd == "0",
             status_code=200,
             data={
-                "rt_cd": "0",
-                "msg_cd": "MCA00000",
-                "msg1": "ok",
+                "rt_cd": rt_cd,
+                "msg_cd": msg_cd,
+                "msg1": msg1,
                 "output": payload.get("output", {}),
                 "output1": payload.get("output1", []),
             },
-            rt_cd="0",
-            msg_cd="MCA00000",
-            msg1="ok",
+            rt_cd=rt_cd,
+            msg_cd=msg_cd,
+            msg1=msg1,
             latency_ms=1.0,
             tr_id=tr_id,
             path=path,
@@ -133,6 +136,17 @@ def sample_trade_history_response() -> dict[str, Any]:
                 "odno": "00001234",
             }
         ]
+    }
+
+
+def sample_balance_rejected_response(*, msg1: str = "Balance lookup failed") -> dict[str, Any]:
+    """Build a rejected balance inquiry mock response payload."""
+    return {
+        "rt_cd": "1",
+        "msg_cd": "EGW00123",
+        "msg1": msg1,
+        "output": {},
+        "output1": [],
     }
 
 

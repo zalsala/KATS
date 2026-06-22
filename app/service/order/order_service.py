@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from app.broker.kis.api.order_api_keys import ORDER_CASH, ORDER_RVSECNL
 from app.domain.order.order import Order
 from app.domain.order.order_result import OrderResult
+from app.dto.order.order_constants import ORDER_DIVISION_LIMIT, ORDER_DIVISION_MARKET
 from app.dto.order.order_requests import (
     CancelOrderRequest,
     CashBuyOrderRequest,
@@ -49,7 +50,12 @@ class OrderService:
 
     def place_cash_buy_order(self, request: CashBuyOrderRequest) -> OrderResult:
         """Submit a cash buy order."""
-        self._validate_cash_order(request.symbol_code, request.quantity, request.price)
+        self._validate_cash_order(
+            request.symbol_code,
+            request.quantity,
+            request.price,
+            request.order_division,
+        )
         return self._submit(
             api_key=ORDER_CASH,
             body=request.to_body(),
@@ -61,7 +67,12 @@ class OrderService:
 
     def place_cash_sell_order(self, request: CashSellOrderRequest) -> OrderResult:
         """Submit a cash sell order."""
-        self._validate_cash_order(request.symbol_code, request.quantity, request.price)
+        self._validate_cash_order(
+            request.symbol_code,
+            request.quantity,
+            request.price,
+            request.order_division,
+        )
         return self._submit(
             api_key=ORDER_CASH,
             body=request.to_body(),
@@ -147,11 +158,20 @@ class OrderService:
         return order_result
 
     @staticmethod
-    def _validate_cash_order(symbol_code: str, quantity: str, price: str) -> None:
+    def _validate_cash_order(
+        symbol_code: str,
+        quantity: str,
+        price: str,
+        order_division: str = ORDER_DIVISION_LIMIT,
+    ) -> None:
         if not symbol_code:
             raise OrderValidationError("symbol_code is required")
         if not quantity or int(quantity) <= 0:
             raise OrderValidationError("quantity must be greater than 0")
+        if order_division == ORDER_DIVISION_MARKET:
+            if price != "0":
+                raise OrderValidationError("market order price must be 0")
+            return
         if not price or int(price) <= 0:
             raise OrderValidationError("price must be greater than 0")
 

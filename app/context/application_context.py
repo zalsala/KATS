@@ -16,6 +16,7 @@ from app.plugins.plugin_manager import PluginLoadReport, PluginManager
 from app.scheduler.rules import IntervalRule
 from app.scheduler.scheduled_task import ScheduledTask
 from app.scheduler.task_types import ScheduledTaskType
+from app.service.account.account_service import AccountService
 from app.service.backtest.backtest_service import BacktestService
 from app.service.chart.chart_service import ChartService
 from app.service.notification.notification_service import NotificationService
@@ -53,6 +54,7 @@ class ApplicationContext:
     notification_service: NotificationService
     authentication: AuthenticationComponents | None = None
     order_service: OrderService | None = None
+    account_service: AccountService | None = None
     websocket_service: WebSocketService | None = None
     realtime_market_data_publisher: RealtimeMarketDataPublisher | None = None
     scheduler_service: SchedulerService | None = None

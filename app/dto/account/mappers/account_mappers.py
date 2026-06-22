@@ -130,10 +130,16 @@ class TradeHistoryMapper:
                 symbol_code=dto.symbol_code,
                 stock_name=dto.stock_name,
                 side=dto.side,
+                order_division=dto.order_division,
+                order_quantity=_to_decimal(dto.order_quantity),
+                order_price=_to_decimal(dto.order_price),
+                remaining_quantity=_to_decimal(dto.remaining_quantity),
                 executed_quantity=_to_decimal(dto.executed_quantity),
                 executed_price=_to_decimal(dto.executed_price),
                 executed_amount=_to_decimal(dto.executed_amount),
                 order_number=dto.order_number,
+                cancel_yn=dto.cancel_yn,
+                reject_reason=dto.reject_reason,
                 queried_at=timestamp,
             )
             for dto in dtos

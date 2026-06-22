@@ -52,6 +52,10 @@ class AccountService:
     def get_deposit(self, account: AccountContext) -> Deposit:
         return self._get_deposit.execute(account)
 
+    def get_balance_summary(self, account: AccountContext) -> tuple[Deposit, AccountBalance]:
+        """Return deposit and balance summary from a single balance inquiry."""
+        return self._account_repository.get_balance_summary(account)
+
     def get_holding_stocks(self, account: AccountContext) -> list[HoldingStock]:
         return self._get_holding_stocks.execute(account)
 

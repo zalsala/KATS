@@ -4,37 +4,31 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from PySide6.QtCore import QRect, Qt
-from PySide6.QtGui import QColor, QPainter, QPaintEvent, QPen
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt
+from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPaintEvent, QPen, QResizeEvent
 from PySide6.QtWidgets import QWidget
 
 from app.chart.candle import Candle
+from app.indicator.indicator_display import build_legend_items, indicator_color_hex
 from app.indicator.indicator_series import IndicatorSeriesMap
+from app.ui.chart.candle_inspector import CandleInspector, HoverState
+from app.ui.chart.chart_layout import plot_rect
+from app.ui.widgets.chart_crosshair import ChartCrosshair
+from app.ui.widgets.chart_hover_tooltip import ChartHoverTooltip
+from app.ui.widgets.indicator_legend import IndicatorLegend
 
 EMPTY_MESSAGE = "No chart data available"
-MARGIN_LEFT = 56
-MARGIN_RIGHT = 12
-MARGIN_TOP = 12
-MARGIN_BOTTOM = 28
 BULL_COLOR = QColor("#26a69a")
 BEAR_COLOR = QColor("#ef5350")
 AXIS_COLOR = QColor("#9e9e9e")
 BACKGROUND_COLOR = QColor("#1e1e1e")
 TEXT_COLOR = QColor("#e0e0e0")
-INDICATOR_COLORS: dict[str, QColor] = {
-    "SMA": QColor("#42a5f5"),
-    "EMA": QColor("#ab47bc"),
-    "VWAP": QColor("#ffa726"),
-}
+LEGEND_MARGIN = 8
 
 
 def _indicator_color(name: str) -> QColor:
     """Resolve overlay color for dynamic indicator names such as SMA50."""
-    if name.startswith("SMA"):
-        return INDICATOR_COLORS["SMA"]
-    if name.startswith("EMA"):
-        return INDICATOR_COLORS["EMA"]
-    return INDICATOR_COLORS.get(name, TEXT_COLOR)
+    return QColor(indicator_color_hex(name))
 
 
 class ChartWidget(QWidget):
@@ -45,6 +39,13 @@ class ChartWidget(QWidget):
         self._candles: list[Candle] = []
         self._indicator_series: IndicatorSeriesMap = {}
         self._symbol = ""
+        self._legend = IndicatorLegend(self)
+        self._crosshair = ChartCrosshair(self)
+        self._tooltip = ChartHoverTooltip(self)
+        self._inspector = CandleInspector([], {})
+        self._hover_state = HoverState()
+        self._last_hover_pos: QPoint | None = None
+        self.setMouseTracking(True)
         self.setMinimumHeight(240)
 
     @property
@@ -62,16 +63,57 @@ class ChartWidget(QWidget):
         """Return the currently configured indicator overlay series."""
         return dict(self._indicator_series)
 
+    @property
+    def indicator_legend(self) -> IndicatorLegend:
+        """Return the embedded indicator legend overlay."""
+        return self._legend
+
+    @property
+    def crosshair(self) -> ChartCrosshair:
+        """Return the embedded chart crosshair overlay."""
+        return self._crosshair
+
+    @property
+    def hover_tooltip(self) -> ChartHoverTooltip:
+        """Return the embedded hover tooltip overlay."""
+        return self._tooltip
+
+    @property
+    def hover_state(self) -> HoverState:
+        """Return the current chart hover state."""
+        return self._hover_state
+
     def set_candles(self, candles: list[Candle], *, symbol: str = "") -> None:
         """Replace the displayed candle series."""
         self._candles = list(candles)
         self._symbol = symbol
+        self._inspector = CandleInspector(self._candles, self._indicator_series)
+        self._position_legend()
+        self._refresh_hover()
         self.update()
 
     def set_indicator_series(self, series: IndicatorSeriesMap | None) -> None:
         """Replace overlay indicator line series."""
         self._indicator_series = dict(series or {})
+        self._legend.set_items(build_legend_items(self._indicator_series))
+        self._inspector = CandleInspector(self._candles, self._indicator_series)
+        self._position_legend()
+        self._refresh_hover()
         self.update()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._crosshair.setGeometry(self.rect())
+        self._position_legend()
+        self._refresh_hover()
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        self._update_hover_at(event.position().toPoint())
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event: QEvent) -> None:  # noqa: N802
+        self._clear_hover()
+        super().leaveEvent(event)
 
     def paintEvent(self, _event: QPaintEvent) -> None:  # noqa: N802
         painter = QPainter(self)
@@ -84,12 +126,7 @@ class ChartWidget(QWidget):
             painter.end()
             return
 
-        chart_rect = self.rect().adjusted(
-            MARGIN_LEFT,
-            MARGIN_TOP,
-            -MARGIN_RIGHT,
-            -MARGIN_BOTTOM,
-        )
+        chart_rect = plot_rect(self.rect())
         if chart_rect.width() <= 0 or chart_rect.height() <= 0:
             painter.end()
             return
@@ -198,6 +235,58 @@ class ChartWidget(QWidget):
                 if previous_point is not None:
                     painter.drawLine(previous_point[0], previous_point[1], x, y)
                 previous_point = (x, y)
+
+    def _position_legend(self) -> None:
+        if not self._legend.isVisible():
+            return
+
+        chart_rect = plot_rect(self.rect())
+        if chart_rect.width() <= 0 or chart_rect.height() <= 0:
+            return
+
+        legend_x = chart_rect.right() - self._legend.width() - LEGEND_MARGIN
+        legend_y = chart_rect.top() + LEGEND_MARGIN
+        self._legend.move(legend_x, legend_y)
+        self._legend.raise_()
+
+    def _update_hover_at(self, position: QPoint) -> None:
+        if not self._candles:
+            self._clear_hover()
+            return
+
+        plot_area = plot_rect(self.rect())
+        hover = self._inspector.resolve_hover(position, plot_area)
+        if not hover.active:
+            self._clear_hover()
+            return
+
+        self._last_hover_pos = position
+        self._hover_state = hover
+        self._crosshair.set_hover(hover, plot_area)
+        inspection = hover.inspection
+        if inspection is not None and hover.candle_index is not None:
+            self._tooltip.set_inspection(
+                inspection,
+                anchor=position,
+                plot_area=plot_area,
+                candle_index=hover.candle_index,
+                candle_count=len(self._candles),
+            )
+        else:
+            self._tooltip.clear()
+        self._crosshair.raise_()
+        self._tooltip.raise_()
+
+    def _refresh_hover(self) -> None:
+        if self._last_hover_pos is None:
+            return
+        self._update_hover_at(self._last_hover_pos)
+
+    def _clear_hover(self) -> None:
+        self._last_hover_pos = None
+        self._hover_state = HoverState()
+        self._crosshair.clear()
+        self._tooltip.clear()
 
 
 def _price_bounds(

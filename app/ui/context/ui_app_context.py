@@ -10,14 +10,17 @@ from app.bootstrap.application_bootstrap import ApplicationBootstrap, BootstrapO
 from app.config.config_manager import ConfigManager
 from app.context.application_context import ApplicationContext
 from app.events.event_bus_service import EventBusService
+from app.service.account.account_service import AccountService
 from app.service.backtest.backtest_service import BacktestService
 from app.service.chart.chart_service import ChartService
 from app.service.order.order_service import OrderService
 from app.service.portfolio.portfolio_service import PortfolioService
 from app.service.risk.risk_service import RiskService
 from app.service.strategy.strategy_service import StrategyService
+from app.service.watchlist.watchlist_service import WatchlistService
 
 if TYPE_CHECKING:
+    from app.service.market.market_service import MarketService
     from app.service.websocket.websocket_service import WebSocketService
 
 
@@ -33,7 +36,10 @@ class UiAppContext:
     backtest_service: BacktestService
     chart_service: ChartService
     order_service: OrderService | None = None
+    account_service: AccountService | None = None
     websocket_service: WebSocketService | None = None
+    market_service: MarketService | None = None
+    watchlist_service: WatchlistService | None = None
     application_context: ApplicationContext | None = None
     _started: bool = False
 
@@ -75,6 +81,7 @@ class UiAppContext:
             backtest_service=application_context.backtest_service,
             chart_service=application_context.chart_service,
             order_service=application_context.order_service,
+            account_service=application_context.account_service,
             websocket_service=application_context.websocket_service,
             application_context=application_context,
         )

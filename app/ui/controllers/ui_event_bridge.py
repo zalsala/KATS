@@ -9,15 +9,23 @@ from app.events.base_event import BaseEvent
 from app.events.event_bus_service import EventBusService
 from app.events.event_types import EventType
 from app.ui.controllers.ui_controller import UiController
+from app.ui.controllers.watchlist_controller import WatchlistController
 from app.ui.viewmodels.main_view_model import MainViewModel
 
 
 class UiEventBridge:
     """Subscribes to EventBus events and refreshes view models."""
 
-    def __init__(self, *, controller: UiController, view_model: MainViewModel) -> None:
+    def __init__(
+        self,
+        *,
+        controller: UiController,
+        view_model: MainViewModel,
+        watchlist_controller: WatchlistController | None = None,
+    ) -> None:
         self._controller = controller
         self._view_model = view_model
+        self._watchlist_controller = watchlist_controller
         self._subscription_ids: list[str] = []
 
     def register(self, event_bus: EventBusService) -> tuple[str, ...]:
@@ -71,6 +79,11 @@ class UiEventBridge:
             price=Decimal(str(price_raw)),
             updated_at=datetime.now(UTC).isoformat(),
         )
+        if self._watchlist_controller is not None and symbol:
+            self._watchlist_controller.handle_market_tick(
+                symbol_code=symbol,
+                price=Decimal(str(price_raw)),
+            )
 
     def _handle_strategy(self, event: BaseEvent) -> None:
         signal_type = event.payload.get("signal_type", "")

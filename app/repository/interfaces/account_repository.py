@@ -23,6 +23,10 @@ class IAccountRepository(Protocol):
         """Return deposit (cash) summary."""
         ...
 
+    def get_balance_summary(self, account: AccountContext) -> tuple[Deposit, AccountBalance]:
+        """Return deposit and balance summary from one balance inquiry."""
+        ...
+
     def get_holding_stocks(self, account: AccountContext) -> list[HoldingStock]:
         """Return held stock positions."""
         ...
