@@ -52,7 +52,13 @@ def test_indicator_service_multiple_timeframes() -> None:
 
 def test_chart_service_updates_registered_indicators() -> None:
     indicators = IndicatorService()
-    indicators.register_indicator("005930", "1m", "sma_2", SmaIndicator(2))
+    indicators.register_indicator(
+        "005930",
+        "1m",
+        "sma_2",
+        SmaIndicator(2),
+        factory=lambda: SmaIndicator(2),
+    )
     indicators.register_indicator("005930", "1m", "vwap", VwapIndicator())
     indicators.register_indicator("005930", "1m", "ema_2", EmaIndicator(2))
 

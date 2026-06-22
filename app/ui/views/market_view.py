@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFormLayout,
     QHBoxLayout,
@@ -55,9 +56,18 @@ class MarketView(QWidget):
         for timeframe in Timeframe:
             self._timeframe_selector.addItem(timeframe.value, timeframe)
         self._timeframe_selector.setCurrentText(self._chart_vm.selected_timeframe.value)
+        self._sma_checkbox = QCheckBox("SMA")
+        self._ema_checkbox = QCheckBox("EMA")
+        self._vwap_checkbox = QCheckBox("VWAP")
+        self._sma_checkbox.setChecked(self._chart_vm.show_sma)
+        self._ema_checkbox.setChecked(self._chart_vm.show_ema)
+        self._vwap_checkbox.setChecked(self._chart_vm.show_vwap)
 
         self._symbol_input.textChanged.connect(self._on_symbol_changed)
         self._timeframe_selector.currentIndexChanged.connect(self._on_timeframe_changed)
+        self._sma_checkbox.toggled.connect(self._chart_vm.set_show_sma)
+        self._ema_checkbox.toggled.connect(self._chart_vm.set_show_ema)
+        self._vwap_checkbox.toggled.connect(self._chart_vm.set_show_vwap)
         self._connect_button.clicked.connect(self._on_connect_clicked)
         self._disconnect_button.clicked.connect(self._on_disconnect_clicked)
         self._subscribe_button.clicked.connect(self._on_subscribe_clicked)
@@ -71,6 +81,12 @@ class MarketView(QWidget):
         controls = QFormLayout()
         controls.addRow("Symbol code", self._symbol_input)
         controls.addRow("Timeframe", self._timeframe_selector)
+
+        overlays = QHBoxLayout()
+        overlays.addWidget(self._sma_checkbox)
+        overlays.addWidget(self._ema_checkbox)
+        overlays.addWidget(self._vwap_checkbox)
+        controls.addRow("Indicators", overlays)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self._connect_button)
@@ -111,6 +127,7 @@ class MarketView(QWidget):
 
     def _update_chart_widget(self) -> None:
         self._chart_widget.set_candles(self._chart_vm.candles, symbol=self._chart_vm.symbol_code)
+        self._chart_widget.set_indicator_series(self._chart_vm.indicator_series)
 
     def _refresh_diagnostics(self) -> None:
         self._diag_last_time.setText(self._chart_vm.last_trade_time or "-")

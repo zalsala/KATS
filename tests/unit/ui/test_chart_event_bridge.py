@@ -60,7 +60,7 @@ def test_chart_event_bridge_refreshes_view_model() -> None:
         )
     )
 
-    assert changes == ["candles"]
+    assert changes == ["indicators", "candles"]
     assert len(view_model.candles) == 1
     assert view_model.candles[0].close == Decimal("70300")
 

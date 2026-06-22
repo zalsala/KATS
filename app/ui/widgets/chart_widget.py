@@ -9,6 +9,7 @@ from PySide6.QtGui import QColor, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QWidget
 
 from app.chart.candle import Candle
+from app.indicator.indicator_series import IndicatorSeriesMap
 
 EMPTY_MESSAGE = "No chart data available"
 MARGIN_LEFT = 56
@@ -20,6 +21,11 @@ BEAR_COLOR = QColor("#ef5350")
 AXIS_COLOR = QColor("#9e9e9e")
 BACKGROUND_COLOR = QColor("#1e1e1e")
 TEXT_COLOR = QColor("#e0e0e0")
+INDICATOR_COLORS: dict[str, QColor] = {
+    "SMA20": QColor("#42a5f5"),
+    "EMA20": QColor("#ab47bc"),
+    "VWAP": QColor("#ffa726"),
+}
 
 
 class ChartWidget(QWidget):
@@ -28,6 +34,7 @@ class ChartWidget(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._candles: list[Candle] = []
+        self._indicator_series: IndicatorSeriesMap = {}
         self._symbol = ""
         self.setMinimumHeight(240)
 
@@ -41,10 +48,20 @@ class ChartWidget(QWidget):
         """Return the displayed symbol code."""
         return self._symbol
 
+    @property
+    def indicator_series(self) -> IndicatorSeriesMap:
+        """Return the currently configured indicator overlay series."""
+        return dict(self._indicator_series)
+
     def set_candles(self, candles: list[Candle], *, symbol: str = "") -> None:
         """Replace the displayed candle series."""
         self._candles = list(candles)
         self._symbol = symbol
+        self.update()
+
+    def set_indicator_series(self, series: IndicatorSeriesMap | None) -> None:
+        """Replace overlay indicator line series."""
+        self._indicator_series = dict(series or {})
         self.update()
 
     def paintEvent(self, _event: QPaintEvent) -> None:  # noqa: N802
@@ -68,9 +85,10 @@ class ChartWidget(QWidget):
             painter.end()
             return
 
-        min_price, max_price = _price_bounds(self._candles)
+        min_price, max_price = _price_bounds(self._candles, self._indicator_series)
         self._draw_axes(painter, chart_rect, min_price, max_price)
         self._draw_candles(painter, chart_rect, min_price, max_price)
+        self._draw_indicator_lines(painter, chart_rect, min_price, max_price)
         painter.end()
 
     def _draw_axes(
@@ -137,10 +155,54 @@ class ChartWidget(QWidget):
                 color,
             )
 
+    def _draw_indicator_lines(
+        self,
+        painter: QPainter,
+        chart_rect: QRect,
+        min_price: Decimal,
+        max_price: Decimal,
+    ) -> None:
+        if not self._indicator_series:
+            return
 
-def _price_bounds(candles: list[Candle]) -> tuple[Decimal, Decimal]:
+        count = len(self._candles)
+        if count == 0:
+            return
+
+        slot_width = chart_rect.width() / count
+        candle_index = {candle.timestamp: index for index, candle in enumerate(self._candles)}
+
+        for name, points in self._indicator_series.items():
+            if not points:
+                continue
+
+            color = INDICATOR_COLORS.get(name, TEXT_COLOR)
+            painter.setPen(QPen(color, 2))
+            previous_point: tuple[int, int] | None = None
+
+            for timestamp, value in points:
+                index = candle_index.get(timestamp)
+                if index is None:
+                    continue
+                x = chart_rect.left() + int((index + 0.5) * slot_width)
+                y = _price_to_y(value, min_price, max_price, chart_rect)
+                if previous_point is not None:
+                    painter.drawLine(previous_point[0], previous_point[1], x, y)
+                previous_point = (x, y)
+
+
+def _price_bounds(
+    candles: list[Candle],
+    indicator_series: IndicatorSeriesMap,
+) -> tuple[Decimal, Decimal]:
     min_price = min(candle.low for candle in candles)
     max_price = max(candle.high for candle in candles)
+
+    for points in indicator_series.values():
+        for _timestamp, value in points:
+            min_price = min(min_price, value)
+            max_price = max(max_price, value)
+
     if min_price == max_price:
         return min_price - Decimal("1"), max_price + Decimal("1")
     padding = (max_price - min_price) * Decimal("0.05")

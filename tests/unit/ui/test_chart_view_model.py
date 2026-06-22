@@ -39,7 +39,7 @@ def test_chart_view_model_refresh_notifies_listeners() -> None:
 
     view_model.refresh()
 
-    assert changes == ["candles"]
+    assert changes == ["indicators", "candles"]
 
 
 def test_chart_view_model_set_symbol() -> None:

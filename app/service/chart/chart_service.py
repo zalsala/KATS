@@ -19,7 +19,7 @@ from app.chart.timeframe import (
     resolve_timeframe,
 )
 from app.events.event_bus_service import EventBusService
-from app.indicator.indicator_service import IndicatorService
+from app.indicator.indicator_service import IndicatorService, build_indicator_service
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,11 @@ class ChartService:
     @property
     def event_handler(self) -> ChartEventHandler:
         return self._handler
+
+    @property
+    def indicator_service(self) -> IndicatorService | None:
+        """Return the optional indicator service wired to finalized candles."""
+        return self._indicator_service
 
     def start(self, event_bus: EventBusService | None = None) -> None:
         """Register chart handlers with EventBus."""
@@ -255,5 +260,5 @@ def build_chart_service(
     return ChartService(
         store=store,
         event_bus=event_bus,
-        indicator_service=indicator_service,
+        indicator_service=indicator_service or build_indicator_service(),
     )
