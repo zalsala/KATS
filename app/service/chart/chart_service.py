@@ -19,6 +19,7 @@ from app.chart.timeframe import (
     resolve_timeframe,
 )
 from app.events.event_bus_service import EventBusService
+from app.indicator.indicator_service import IndicatorService
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +35,12 @@ class ChartService:
         store: CandleStore | None = None,
         event_handler: ChartEventHandler | None = None,
         event_bus: EventBusService | None = None,
+        indicator_service: IndicatorService | None = None,
     ) -> None:
         self._store = store or InMemoryCandleStore()
         self._builders: dict[BuilderKey, CandleBuilder] = {}
         self._event_bus = event_bus
+        self._indicator_service = indicator_service
         self._handler = event_handler or ChartEventHandler(chart_service=self)
         self._started = False
         self._total_ticks = 0
@@ -85,7 +88,7 @@ class ChartService:
             builder = self._get_builder(symbol, timeframe)
             finalized = builder.update_trade(price, volume, timestamp=timestamp)
             if finalized is not None:
-                self._store.save_candle(finalized)
+                self._save_finalized_candle(finalized)
         self._record_trade(symbol, trade_price, timestamp)
 
     def on_market_tick(self, payload: dict[str, Any]) -> None:
@@ -193,8 +196,13 @@ class ChartService:
             return None
         finalized = builder.finalize()
         if finalized is not None:
-            self._store.save_candle(finalized)
+            self._save_finalized_candle(finalized)
         return finalized
+
+    def _save_finalized_candle(self, candle: Candle) -> None:
+        self._store.save_candle(candle)
+        if self._indicator_service is not None:
+            self._indicator_service.update_candle(candle)
 
     def _record_trade(self, symbol: str, price: Decimal, timestamp: datetime) -> None:
         self._total_ticks += 1
@@ -241,6 +249,11 @@ def build_chart_service(
     *,
     store: CandleStore | None = None,
     event_bus: EventBusService | None = None,
+    indicator_service: IndicatorService | None = None,
 ) -> ChartService:
     """Create a ChartService with default in-memory storage."""
-    return ChartService(store=store, event_bus=event_bus)
+    return ChartService(
+        store=store,
+        event_bus=event_bus,
+        indicator_service=indicator_service,
+    )
