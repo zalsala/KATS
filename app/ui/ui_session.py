@@ -13,7 +13,7 @@ class UiSession:
 
     def __init__(self, *, context: UiAppContext) -> None:
         self.context = context
-        self.view_model = MainViewModel()
+        self.view_model = MainViewModel(chart_service=context.chart_service)
         self.controller = UiController(context=context)
         self.event_bridge = UiEventBridge(controller=self.controller, view_model=self.view_model)
         self._started = False

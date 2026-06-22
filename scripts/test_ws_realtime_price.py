@@ -97,10 +97,7 @@ def format_sample_message(
             f"trade_time={entity.trade_time}"
         )
     if isinstance(entity, RealtimeOrderbook):
-        return (
-            f"symbol={entity.symbol_code} "
-            f"bid={entity.bid_price} ask={entity.ask_price}"
-        )
+        return f"symbol={entity.symbol_code} " f"bid={entity.bid_price} ask={entity.ask_price}"
     return (
         f"symbol={entity.symbol_code} "
         f"side={entity.side} "

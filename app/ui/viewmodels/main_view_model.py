@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from app.service.chart.chart_service import ChartService, build_chart_service
 from app.ui.viewmodels.backtest_view_model import BacktestViewModel
 from app.ui.viewmodels.base import ViewModelBase
+from app.ui.viewmodels.chart_view_model import ChartViewModel
 from app.ui.viewmodels.dashboard_view_model import DashboardViewModel
 from app.ui.viewmodels.log_view_model import LogViewModel
 from app.ui.viewmodels.market_view_model import MarketViewModel
@@ -16,12 +18,13 @@ from app.ui.viewmodels.strategy_view_model import StrategyViewModel
 class MainViewModel(ViewModelBase):
     """Aggregates child view models for the main window."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, chart_service: ChartService | None = None) -> None:
         super().__init__()
         self.active_view: str = "dashboard"
         self.status_message: str = "Ready"
         self.dashboard = DashboardViewModel()
         self.market = MarketViewModel()
+        self.chart = ChartViewModel(chart_service or build_chart_service())
         self.order = OrderViewModel()
         self.portfolio = PortfolioViewModel()
         self.strategy = StrategyViewModel()

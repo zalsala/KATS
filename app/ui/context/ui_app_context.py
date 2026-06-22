@@ -11,6 +11,7 @@ from app.config.config_manager import ConfigManager
 from app.context.application_context import ApplicationContext
 from app.events.event_bus_service import EventBusService
 from app.service.backtest.backtest_service import BacktestService
+from app.service.chart.chart_service import ChartService, build_chart_service
 from app.service.order.order_service import OrderService
 from app.service.portfolio.portfolio_service import PortfolioService
 from app.service.risk.risk_service import RiskService
@@ -30,6 +31,7 @@ class UiAppContext:
     strategy_service: StrategyService
     risk_service: RiskService
     backtest_service: BacktestService
+    chart_service: ChartService
     order_service: OrderService | None = None
     websocket_service: WebSocketService | None = None
     application_context: ApplicationContext | None = None
@@ -71,6 +73,7 @@ class UiAppContext:
             strategy_service=application_context.strategy_service,
             risk_service=application_context.risk_service,
             backtest_service=application_context.backtest_service,
+            chart_service=build_chart_service(),
             order_service=application_context.order_service,
             websocket_service=application_context.websocket_service,
             application_context=application_context,

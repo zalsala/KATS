@@ -10,6 +10,7 @@ from app.dto.order.order_requests import CashBuyOrderRequest, CashSellOrderReque
 from app.events.event_bus_service import EventBusService
 from app.events.in_memory_event_bus import InMemoryEventBus
 from app.service.backtest.backtest_service import build_backtest_service
+from app.service.chart.chart_service import build_chart_service
 from app.service.portfolio.portfolio_service import build_portfolio_service
 from app.service.risk.risk_service import build_risk_service
 from app.service.strategy.strategy_service import build_strategy_service
@@ -73,6 +74,7 @@ def build_test_ui_context(*, order_service: MockOrderService | None = None) -> U
     strategy_service = build_strategy_service(event_bus=event_bus)
     risk_service = build_risk_service(portfolio_service=portfolio_service, event_bus=event_bus)
     backtest_service = build_backtest_service()
+    chart_service = build_chart_service()
     config_manager = MagicMock()
     settings = MagicMock()
     settings.environment = "test"
@@ -87,6 +89,7 @@ def build_test_ui_context(*, order_service: MockOrderService | None = None) -> U
         strategy_service=strategy_service,
         risk_service=risk_service,
         backtest_service=backtest_service,
+        chart_service=chart_service,
         order_service=order_service,
     )
 
@@ -99,8 +102,11 @@ def build_test_ui_session(*, order_service: MockOrderService | None = None) -> U
     return session
 
 
-def build_test_main_view_model() -> MainViewModel:
-    return MainViewModel()
+def build_test_main_view_model(*, chart_service=None) -> MainViewModel:
+    from app.service.chart.chart_service import build_chart_service
+
+    service = chart_service or build_chart_service()
+    return MainViewModel(chart_service=service)
 
 
 def build_test_ui_controller(*, order_service: MockOrderService | None = None) -> UiController:
