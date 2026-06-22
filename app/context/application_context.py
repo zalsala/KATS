@@ -28,6 +28,7 @@ from app.service.strategy.strategy_service import StrategyService
 
 if TYPE_CHECKING:
     from app.config.app_settings import AppSettings
+    from app.realtime.realtime_market_data_publisher import RealtimeMarketDataPublisher
     from app.repository.interfaces.portfolio_repository import PortfolioRepository
     from app.service.websocket.websocket_service import WebSocketService
 
@@ -53,6 +54,7 @@ class ApplicationContext:
     authentication: AuthenticationComponents | None = None
     order_service: OrderService | None = None
     websocket_service: WebSocketService | None = None
+    realtime_market_data_publisher: RealtimeMarketDataPublisher | None = None
     scheduler_service: SchedulerService | None = None
     scheduler_worker_service: SchedulerWorkerService | None = None
     portfolio_repository: PortfolioRepository | None = None
@@ -97,6 +99,8 @@ class ApplicationContext:
         if not self._running:
             return
 
+        self._stop_realtime_publisher()
+
         if self.websocket_service is not None and self.websocket_service.is_connected:
             self.websocket_service.disconnect()
 
@@ -120,15 +124,27 @@ class ApplicationContext:
             msg = "WebSocketService is not configured"
             raise RuntimeError(msg)
         self.websocket_service.connect()
+        self._start_realtime_publisher()
         logger.info("WebSocket connected explicitly")
 
     def disconnect_websocket(self) -> None:
         """Explicitly disconnect the WebSocket client."""
+        self._stop_realtime_publisher()
         if self.websocket_service is None:
             return
         if self.websocket_service.is_connected:
             self.websocket_service.disconnect()
             logger.info("WebSocket disconnected")
+
+    def _start_realtime_publisher(self) -> None:
+        if self.realtime_market_data_publisher is None:
+            return
+        self.realtime_market_data_publisher.start()
+
+    def _stop_realtime_publisher(self) -> None:
+        if self.realtime_market_data_publisher is None:
+            return
+        self.realtime_market_data_publisher.stop()
 
     def shutdown(self) -> None:
         """Stop services and release logging resources."""

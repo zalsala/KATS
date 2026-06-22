@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -14,6 +15,7 @@ from app.events.event_bus_service import EventBusService
 from app.events.in_memory_event_bus import InMemoryEventBus
 from app.service.chart.chart_service import ChartService
 from app.ui.chart_event_bridge import ChartEventBridge
+from app.ui.controllers.ui_controller import UiController
 from app.ui.viewmodels.chart_view_model import DEFAULT_SYMBOL, ChartViewModel
 from app.ui.viewmodels.main_view_model import MainViewModel
 from app.ui.views.market_view import MarketView
@@ -88,7 +90,8 @@ def test_market_view_updates_chart_on_realtime_event(qapp) -> None:
     view_model = MainViewModel(chart_service=service)
     bridge = ChartEventBridge(chart_view_model=view_model.chart)
     bridge.register(event_bus)
-    view = MarketView(view_model=view_model)
+    controller = UiController(context=MagicMock())
+    view = MarketView(view_model=view_model, controller=controller)
     view.show()
     qapp.processEvents()
 

@@ -37,6 +37,34 @@ class UiController:
     def get_connection_status(self) -> str:
         return "Connected" if self._context.is_connected else "Disconnected"
 
+    def connect_websocket(self) -> None:
+        """Connect WebSocket via ApplicationContext."""
+        if self._context.application_context is None:
+            msg = "ApplicationContext is not configured"
+            raise RuntimeError(msg)
+        self._context.application_context.connect_websocket()
+
+    def disconnect_websocket(self) -> None:
+        """Disconnect WebSocket via ApplicationContext."""
+        if self._context.application_context is None:
+            msg = "ApplicationContext is not configured"
+            raise RuntimeError(msg)
+        self._context.application_context.disconnect_websocket()
+
+    def subscribe_realtime_price(self, symbol_code: str) -> None:
+        """Subscribe realtime price for a symbol via WebSocketService."""
+        if self._context.websocket_service is None:
+            msg = "WebSocketService is not configured"
+            raise RuntimeError(msg)
+        self._context.websocket_service.subscribe_price(symbol_code)
+
+    def unsubscribe_realtime_price(self, symbol_code: str) -> None:
+        """Unsubscribe realtime price for a symbol via WebSocketService."""
+        if self._context.websocket_service is None:
+            msg = "WebSocketService is not configured"
+            raise RuntimeError(msg)
+        self._context.websocket_service.unsubscribe_price(symbol_code)
+
     def get_portfolio_snapshot(self) -> PortfolioSnapshot:
         return self._context.portfolio_service.get_snapshot()
 

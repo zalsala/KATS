@@ -17,6 +17,7 @@ from app.context.application_context import ApplicationContext
 from app.core.logging.logger_service import LoggerService
 from app.database.database_manager import DatabaseManager
 from app.events.event_bus_service import EventBusService, build_event_bus_service
+from app.realtime.realtime_market_data_publisher import build_realtime_market_data_publisher
 from app.service.backtest.backtest_service import build_backtest_service
 from app.service.chart.chart_service import build_chart_service
 from app.service.notification.notification_service import build_notification_service
@@ -105,6 +106,10 @@ def wire_application_context(
         auth=authentication,
         ws_transport=ws_transport,
     )
+    realtime_market_data_publisher = build_realtime_market_data_publisher(
+        websocket_service=websocket_service,
+        event_bus=bus,
+    )
 
     return ApplicationContext(
         project_root=project_root,
@@ -123,6 +128,7 @@ def wire_application_context(
         authentication=authentication,
         order_service=order_service,
         websocket_service=websocket_service,
+        realtime_market_data_publisher=realtime_market_data_publisher,
         scheduler_service=scheduler_service,
         scheduler_worker_service=scheduler_worker_service,
         plugin_manager=plugin_manager,

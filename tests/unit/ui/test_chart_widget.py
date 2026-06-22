@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtWidgets import QApplication
@@ -11,6 +12,7 @@ from PySide6.QtWidgets import QApplication
 from app.chart.candle import Candle
 from app.chart.in_memory_candle_store import InMemoryCandleStore
 from app.service.chart.chart_service import ChartService
+from app.ui.controllers.ui_controller import UiController
 from app.ui.viewmodels.chart_view_model import DEFAULT_SYMBOL
 from app.ui.viewmodels.main_view_model import MainViewModel
 from app.ui.views.market_view import MarketView
@@ -82,7 +84,8 @@ def test_market_view_embeds_chart_widget(qapp) -> None:
         timestamp=datetime(2024, 6, 20, 12, 1, 5, tzinfo=UTC),
     )
     view_model = MainViewModel(chart_service=service)
-    view = MarketView(view_model=view_model)
+    controller = UiController(context=MagicMock())
+    view = MarketView(view_model=view_model, controller=controller)
     view.show()
     qapp.processEvents()
 

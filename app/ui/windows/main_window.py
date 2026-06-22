@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget()
         self._views: dict[str, QWidget] = {
             "dashboard": DashboardView(view_model=self._vm),
-            "market": MarketView(view_model=self._vm),
+            "market": MarketView(view_model=self._vm, controller=session.controller),
             "order": OrderView(view_model=self._vm, controller=session.controller),
             "portfolio": PortfolioView(view_model=self._vm),
             "strategy": StrategyView(view_model=self._vm, controller=session.controller),
