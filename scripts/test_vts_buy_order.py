@@ -11,7 +11,6 @@ from pathlib import Path
 SAMSUNG_SYMBOL = "005930"
 ORDER_QUANTITY = "1"
 ORDER_DIVISION_LIMIT = "00"
-LIMIT_PRICE_OFFSET = 100
 CONFIRMATION_PROMPT = "VTS 모의 매수 주문 1주를 실행합니다. 계속하려면 YES 입력"
 
 
@@ -102,10 +101,40 @@ def fetch_current_price(
     return response.current_price
 
 
-def calculate_limit_buy_price(current_price: str, *, offset: int = LIMIT_PRICE_OFFSET) -> str:
-    """Return a limit buy price below the current price."""
-    normalized = int(current_price)
-    return str(max(1, normalized - offset))
+def resolve_domestic_tick_size(price: int) -> int:
+    """Return the KRX domestic stock tick size for the given price."""
+    if price < 1000:
+        return 1
+    if price < 5000:
+        return 5
+    if price < 10000:
+        return 10
+    if price < 50000:
+        return 50
+    if price < 100000:
+        return 100
+    if price < 500000:
+        return 500
+    return 1000
+
+
+def floor_to_tick(price: int) -> int:
+    """Floor a price to the nearest valid domestic tick."""
+    if price <= 0:
+        return 0
+    tick = resolve_domestic_tick_size(price)
+    return (price // tick) * tick
+
+
+def calculate_limit_buy_price(current_price: str) -> str:
+    """Return a valid limit buy price one tick below the current price."""
+    price = int(current_price)
+    if price <= 1:
+        return "1"
+    tick = resolve_domestic_tick_size(price)
+    aligned = floor_to_tick(price)
+    limit = max(1, aligned - tick)
+    return str(limit)
 
 
 def prompt_user_confirmation(

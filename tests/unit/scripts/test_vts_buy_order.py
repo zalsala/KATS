@@ -43,10 +43,34 @@ class TestVtsBuyOrderScript:
         module = _load_module(project_root)
         assert module.project_root() == project_root
 
+    def test_resolve_domestic_tick_size(self, project_root) -> None:
+        module = _load_module(project_root)
+        assert module.resolve_domestic_tick_size(500) == 1
+        assert module.resolve_domestic_tick_size(1000) == 5
+        assert module.resolve_domestic_tick_size(70000) == 100
+        assert module.resolve_domestic_tick_size(357500) == 500
+        assert module.resolve_domestic_tick_size(600000) == 1000
+
+    def test_floor_to_tick(self, project_root) -> None:
+        module = _load_module(project_root)
+        assert module.floor_to_tick(357501) == 357500
+        assert module.floor_to_tick(357500) == 357500
+        assert module.floor_to_tick(69999) == 69900
+
     def test_calculate_limit_buy_price(self, project_root) -> None:
         module = _load_module(project_root)
         assert module.calculate_limit_buy_price("70000") == "69900"
-        assert module.calculate_limit_buy_price("50", offset=100) == "1"
+        assert module.calculate_limit_buy_price("357500") == "357000"
+        assert module.calculate_limit_buy_price("357501") == "357000"
+        assert module.calculate_limit_buy_price("1000") == "995"
+        assert module.calculate_limit_buy_price("1") == "1"
+
+    def test_calculate_limit_buy_price_returns_string(self, project_root) -> None:
+        module = _load_module(project_root)
+        result = module.calculate_limit_buy_price("357500")
+        assert isinstance(result, str)
+        assert int(result) < 357500
+        assert int(result) % module.resolve_domestic_tick_size(357500) == 0
 
     def test_validate_vts_buy_prerequisites_rejects_live_trading(self, project_root) -> None:
         module = _load_module(project_root)
